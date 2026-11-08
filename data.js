@@ -100,7 +100,7 @@ window.D = {
       privacy: 'プライバシー', postText: (p, t) => `30日自分を磨いたら、恋人は「${p}」でした。称号: ${t} #自分磨き30日 #バカゲー`,
       share: '結果', load: '身だしなみ中',
       tapChat: '顔をタップすると、ふたりのトークが見られる', read: '既読', chatInput: 'メッセージを入力', app: 'こいぶみ',
-      affBtn: 'この恋の続き、占ってみる？', affNote: '17歳以上・ポイント制の相談アプリです',
+      affBtn: 'この恋の続き、占ってみる？', affNote: '17歳以上',
     },
     en: {
       title: '30-Day Glow-Up', sub: 'Your date matches your grind', start: 'Start 30 days', how: 'How to play', back: 'Back', zukan: 'Partner Book',
@@ -115,7 +115,7 @@ window.D = {
       privacy: 'Privacy', postText: (p, t) => `After a 30-day glow-up, my partner was "${p}". Title: ${t} #30DayGlowUp`,
       share: 'Result', load: 'Getting ready',
       tapChat: 'Tap a face to read your chat history', read: 'Read', chatInput: 'Message', app: 'Koibumi',
-      affBtn: 'Want a real reading on your love life?', affNote: '17+ / points-based consultation app',
+      affBtn: 'Want a real reading on your love life?', affNote: 'Ages 17+',
     },
   },
 }
