@@ -93,8 +93,10 @@
   function judge(D, S) {
     const H = D.H, L = D.L, I = S.int >= H, St = S.str >= H, Lk = S.look >= H
     if (S.sleeps >= 20) return 'pillow'
-    if (S.cat >= 3) return 'cat'
-    if (S.granny >= 3) return 'granny'
+    // 猫とトメさんは隠しの恋人。出来事4回を全部選び、しかも磨きが「高嶺の花」に届かなかった時だけ（2026-11-09 本人「トメさんばっかり出てくる」）
+    const hiddenOk = !(I && St && Lk)
+    if (hiddenOk && S.cat >= 4) return 'cat'
+    if (hiddenOk && S.granny >= 4) return 'granny'
     if (S.injuries >= 2) return 'nurse'
     if (S.n.game >= 10) return 'gamer'
     if (S.int >= 85 && S.str < L && S.look < L) return 'robot'
