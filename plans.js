@@ -10,16 +10,16 @@
   function looks(S) { if (afford(S, 6000)) return 'salon'; if (afford(S, 1500)) return 'skin'; return 'job' }
   P.pillow = () => 'sleep'
   P.robot = S => rest(S, 20) ? 'sleep' : 'study'
-  P.otaku = S => S.int >= 70 ? idle(S) : rest(S, 20) ? 'sleep' : 'study'
-  P.protein = S => S.str >= 70 ? idle(S) : gymOk(S) ? 'gym' : S.hp < 60 ? 'sleep' : 'game'
-  P.narcis = S => S.look >= 72 ? idle(S) : rest(S, 30) ? 'sleep' : (S.money < 6000 ? 'job' : looks(S))
-  P.prof = S => S.int >= 66 && S.str >= 66 ? idle(S) : rest(S, 30) ? 'sleep' : (S.str < S.int && gymOk(S)) ? 'gym' : S.int < 66 ? 'study' : gymOk(S) ? 'gym' : 'sleep'
-  P.inteli = S => { if (S.int >= 66 && S.look >= 66) return idle(S); if (rest(S, 30)) return 'sleep'; if (S.look < S.int || S.int >= 66) return S.money < 6000 ? 'job' : looks(S); return 'study' }
-  P.gal = S => { if (S.str >= 66 && S.look >= 66) return idle(S); if (rest(S, 30)) return 'sleep'; if ((S.str < S.look || S.look >= 66) && gymOk(S)) return 'gym'; if (S.look < 66) return S.money < 6000 ? 'job' : looks(S); return 'sleep' }
+  P.otaku = S => S.int >= 99 ? idle(S) : rest(S, 20) ? 'sleep' : 'study'
+  P.protein = S => S.str >= 105 ? idle(S) : gymOk(S) ? 'gym' : S.hp < 60 ? 'sleep' : 'game'
+  P.narcis = S => S.look >= 108 ? idle(S) : rest(S, 30) ? 'sleep' : (S.money < 6000 ? 'job' : looks(S))
+  P.prof = S => S.int >= 99 && S.str >= 99 ? idle(S) : rest(S, 30) ? 'sleep' : (S.str < S.int && gymOk(S)) ? 'gym' : S.int < 99 ? 'study' : gymOk(S) ? 'gym' : 'sleep'
+  P.inteli = S => { if (S.int >= 99 && S.look >= 99) return idle(S); if (rest(S, 30)) return 'sleep'; if (S.look < S.int || S.int >= 99) return S.money < 6000 ? 'job' : looks(S); return 'study' }
+  P.gal = S => { if (S.str >= 99 && S.look >= 99) return idle(S); if (rest(S, 30)) return 'sleep'; if ((S.str < S.look || S.look >= 99) && gymOk(S)) return 'gym'; if (S.look < 99) return S.money < 6000 ? 'job' : looks(S); return 'sleep' }
   P.takane = S => {
-    if (S.int >= 64 && S.str >= 64 && S.look >= 64) return idle(S)
+    if (S.int >= 96 && S.str >= 96 && S.look >= 96) return idle(S)
     if (rest(S, 30)) return 'sleep'
-    const need = [['int', S.int], ['str', S.str], ['look', S.look]].filter(x => x[1] < 64).sort((a, b) => a[1] - b[1])
+    const need = [['int', S.int], ['str', S.str], ['look', S.look]].filter(x => x[1] < 96).sort((a, b) => a[1] - b[1])
     for (const [k] of need) {
       if (k === 'str' && gymOk(S)) return 'gym'
       if (k === 'int') return 'study'
@@ -29,9 +29,9 @@
   }
   P.futsuu = S => {
     if (rest(S, 30)) return 'sleep'
-    if (S.str < 36 && gymOk(S)) return 'gym'
-    if (S.int < 36) return 'study'
-    if (S.look < 36) return S.money < 6000 ? 'job' : 'salon'
+    if (S.str < 54 && gymOk(S)) return 'gym'
+    if (S.int < 54) return 'study'
+    if (S.look < 54) return S.money < 6000 ? 'job' : 'salon'
     return idle(S)
   }
   P.imo = S => ['job', 'game', 'sleep', 'skin'][S.day % 4] === 'skin' && S.money < 1500 ? 'job' : ['job', 'game', 'sleep', 'skin'][S.day % 4]

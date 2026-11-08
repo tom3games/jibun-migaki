@@ -176,6 +176,54 @@ img{-webkit-user-drag:none;user-select:none}
 #howBody p{font-size:clamp(13px,3.8vw,15px);line-height:1.55}
 #howBody small{margin-top:auto;font-size:10.5px;line-height:1.45;color:#c9b597}
 #howBody a{color:#fff3dc;font-size:13px;display:inline-flex;min-height:36px;align-items:center}
+
+/* 鏡が変わった時のひとこと */
+#meNote{position:absolute;left:50%;top:-4px;z-index:3;transform:translate(-50%,0) rotate(-3deg);background:var(--red);color:#fff;font-family:var(--hand);font-size:13px;padding:2px 8px;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,.3);opacity:0;pointer-events:none}
+#meNote.in{animation:meN 2.4s ease-out forwards}
+@keyframes meN{0%{opacity:0;transform:translate(-50%,8px) rotate(-3deg) scale(1.4)}12%{opacity:1;transform:translate(-50%,0) rotate(-3deg) scale(1)}80%{opacity:1}100%{opacity:0}}
+
+/* PR（結果画面だけ） */
+#affBox{display:flex;flex-direction:column;align-items:center;gap:3px;width:min(100%,420px);flex:none}
+#bAff{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;max-width:100%;padding:0 14px;border-radius:8px;border:1px solid rgba(255,243,220,.4);color:#fff3dc;font-size:14px;font-weight:700;text-decoration:none;text-align:left;line-height:1.25}
+#bAff .pr{flex:none;font-size:13px;font-weight:700;border:1.5px solid #fff3dc;border-radius:3px;padding:0 5px;line-height:1.45}
+#affNote{font-size:11px;color:#c9b597}
+
+/* トーク（架空のアプリ「こいぶみ」） */
+#chat{position:fixed;inset:0;z-index:47;background:#1d140e;display:flex;justify-content:center}
+#chat .ph0{width:100%;max-width:480px;height:100%;display:flex;flex-direction:column;background:#f4e8d4}
+.chHead{flex:none;display:flex;align-items:center;gap:8px;padding:calc(6px + env(safe-area-inset-top)) 104px 7px 2px;background:#c8552e;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+#chBack{display:flex;align-items:center;gap:2px;min-height:44px;padding:0 6px 0 2px;font-size:13px;font-weight:700;color:#fff;flex:none}
+#chBack svg{width:22px;height:22px}
+#chAv{width:38px;height:38px;border-radius:50%;object-fit:cover;object-position:50% 15%;border:2px solid #fff;flex:none}
+.chWho{min-width:0;line-height:1.2}
+#chName{display:block;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chTag{display:block;font-size:11px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chLog{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:10px 10px 16px;display:flex;flex-direction:column;gap:7px;background:#f4e8d4 radial-gradient(rgba(42,29,20,.06) 1px,transparent 1.5px) 0 0/14px 14px}
+#chLog .m{display:flex;align-items:flex-end;gap:6px;max-width:100%}
+#chLog .m.y{flex-direction:row-reverse}
+#chLog .m.in,#chLog .sys.in{animation:msgIn .28s ease-out both}
+@keyframes msgIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+#chLog .av{width:30px;height:30px;border-radius:50%;object-fit:cover;object-position:50% 15%;flex:none;border:1.5px solid #2a1d14;align-self:flex-start}
+#chLog .bb{max-width:68%;padding:7px 12px;border-radius:16px;font-size:15px;line-height:1.4;overflow-wrap:anywhere;border:1.5px solid #2a1d14;background:#fff}
+#chLog .y .bb{background:#ffd36b;border-bottom-right-radius:4px}
+#chLog .p .bb{border-bottom-left-radius:4px}
+#chLog .meta{flex:none;display:flex;flex-direction:column;font-size:10px;line-height:1.25;color:#7a6550;align-items:flex-end}
+#chLog .p .meta{align-items:flex-start}
+#chLog .ph img{display:block;width:min(42vw,160px);aspect-ratio:3/4;object-fit:cover;object-position:50% 15%;border-radius:12px;border:2px solid #2a1d14}
+#chLog .pic{width:min(36vw,140px);aspect-ratio:1;border-radius:12px;border:2px solid #2a1d14;background:#fff6df;padding:14px}
+#chLog .pic svg,#chLog .st svg{display:block;width:100%;height:100%}
+#chLog .st{width:84px;height:84px}
+#chLog .vc{display:flex;align-items:center;gap:8px}
+#chLog .vc .play{width:16px;height:16px;fill:#c8552e;flex:none}
+#chLog .vc .wave{display:flex;align-items:center;gap:2px;height:18px}
+#chLog .vc .wave i{display:block;width:3px;border-radius:2px;background:#2a1d14;height:40%}
+#chLog .vc .wave i:nth-child(3n){height:90%}#chLog .vc .wave i:nth-child(4n+1){height:65%}#chLog .vc .wave i:nth-child(5n+2){height:25%}
+#chLog .vc b{font-size:13px;font-weight:700}
+#chLog .sys{align-self:center;background:rgba(42,29,20,.16);color:#5a4636;font-size:11px;font-weight:700;padding:2px 12px;border-radius:10px;margin:3px 0}
+#chLog .sys.brand{background:none;color:#c8552e;font-family:var(--pop);font-weight:400;font-size:13px;letter-spacing:.1em}
+.chFoot{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:#fffaf0;border-top:1px solid #e0cfb4}
+#chInput{flex:1;height:36px;border-radius:18px;background:#efe3cf;color:#a08c74;font-size:14px;display:flex;align-items:center;padding:0 14px}
+.chFoot svg{width:30px;height:30px;flex:none}
 @media (max-height:700px){#hud{min-height:84px}#wall{min-height:132px}#lineBox{height:50px}#bubble{padding:4px 12px}.lab small{font-size:10px}}
 </style>
 </head>
@@ -206,7 +254,7 @@ img{-webkit-user-drag:none;user-select:none}
     <div id="pig"><img src="img/o_pig.webp?v=1" alt=""><span id="money"></span></div>
     <div id="wall">
       <button class="obj" id="oShelf" data-a="study"><img id="shelfImg" src="img/shelf0.webp?v=1" alt=""><span class="gtag" id="gInt"></span><span class="lab"></span></button>
-      <div id="mirror"><div class="mf"><img src="img/o_mirror.webp?v=1" alt=""><div class="glass"><img id="meImg" src="img/me0.webp?v=1" alt=""></div></div><span class="gtag" id="gLook"></span></div>
+      <div id="mirror"><div class="mf"><img src="img/o_mirror.webp?v=1" alt=""><div class="glass"><img id="meImg" src="img/me0.webp?v=2" alt=""></div></div><span class="gtag" id="gLook"></span><span id="meNote"></span></div>
       <button class="obj" id="oRack" data-a="gym"><img id="rackImg" src="img/rack0.webp?v=1" alt=""><span class="gtag" id="gStr"></span><span class="lab"></span></button>
     </div>
     <div id="lineBox"><div id="bubble"></div><div id="tip" hidden></div></div>
@@ -236,11 +284,17 @@ img{-webkit-user-drag:none;user-select:none}
     <div class="row"><button id="bSave"></button><button id="bPost"></button></div>
     <div class="row"><button id="bAgain"></button><button id="bBook2"></button></div>
   </div>
+  <div id="affBox" hidden><a id="bAff" target="_blank" rel="sponsored noopener"><span class="pr">PR</span><span id="affTxt"></span></a><small id="affNote"></small></div>
 </main>
 
 <div id="memo" hidden><div id="memoCard"><p id="memoTxt"></p><div class="btns"><button id="bC0"></button><button id="bC1"></button></div></div></div>
 <div class="ovl" id="book" hidden><h2><i id="bookH" style="font-style:normal"></i><span id="bookN"></span></h2><div id="grid"></div><p id="bookInfo"></p><button class="close" id="bookClose"></button></div>
 <div class="ovl" id="how" hidden><h2 id="howH"></h2><div id="howBody"></div><button class="close" id="howClose"></button></div>
+<div id="chat" hidden><div class="ph0">
+  <div class="chHead"><button id="chBack" aria-label="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></button><img id="chAv" alt=""><div class="chWho"><b id="chName"></b><span id="chTag"></span></div></div>
+  <div id="chLog"></div>
+  <div class="chFoot" aria-hidden="true"><div id="chInput"></div><svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="14" fill="#e3c9a8"/><path d="M9 15l13-6-5 13-2-5z" fill="#fff"/></svg></div>
+</div></div>
 <div id="flash"></div>
 
 <script>
@@ -267,12 +321,14 @@ img{-webkit-user-drag:none;user-select:none}
   },15000);
 })();
 </script>
-<script src="tm.js?v=1" data-game="jibun-migaki"></script>
+<script src="tm.js?v=2" data-game="jibun-migaki"></script>
 <script src="sfx.js?v=1"></script>
-<script src="data.js?v=1"></script>
-<script src="sim.js?v=2"></script>
-<script src="plans.js?v=1"></script>
-<script src="game.js?v=1"></script>
+<script src="config.js?v=1"></script>
+<script src="data.js?v=2"></script>
+<script src="chats.js?v=1"></script>
+<script src="sim.js?v=3"></script>
+<script src="plans.js?v=2"></script>
+<script src="game.js?v=2"></script>
 <script src="support.js?v=2" data-ja="プロテイン" data-en="a protein shake"></script>
 </body>
 </html>

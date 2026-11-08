@@ -48,7 +48,8 @@
       send('game_end', { play_no: plays, sec: seconds(), score: Number(score) || 0, cleared: cleared ? 1 : 0 })
     },
     share: function (method) { send('share', { method: method }) },
-    support: function () { send('support_click', {}) }
+    support: function () { send('support_click', {}) },
+    aff: function () { send('aff_click', {}) }
   }
   window.addEventListener('pagehide', quit)
 })()

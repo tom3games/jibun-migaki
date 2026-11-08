@@ -1,18 +1,19 @@
 // 文言とデータ（日英）。数値の仕組みは game.js の Sim
 window.D = {
   DAYS: 30,
-  START: { int: 10, str: 10, look: 10, money: 20000, hp: 80 },
-  H: 60, L: 30,   // 高い・低いの線
+  MAX: 150,   // 知力・筋力・見た目の上限（2026-11-09 本人「最大150まで」）
+  START: { int: 15, str: 15, look: 15, money: 20000, hp: 80 },
+  H: 90, L: 45,   // 高い・低いの線（上限150）
   // 行動。gain は基本の伸び、hp・money は増減
   ACT: {
-    gym:   { ja: '筋トレ', en: 'Lift', str: 9, hp: -25, snd: 'gym' },
-    study: { ja: '勉強', en: 'Study', int: 9, hp: -15, snd: 'study' },
-    skin:  { ja: 'スキンケア', en: 'Skincare', look: 4, hp: 5, money: -1500, snd: 'skin' },
-    salon: { ja: '美容院', en: 'Salon', look: 10, money: -6000, snd: 'salon' },
-    clothes: { ja: '服を買う', en: 'Clothes', look: 8, money: -10000, snd: 'clothes' },
+    gym:   { ja: '筋トレ', en: 'Lift', str: 14, hp: -25, snd: 'gym' },
+    study: { ja: '勉強', en: 'Study', int: 14, hp: -15, snd: 'study' },
+    skin:  { ja: 'スキンケア', en: 'Skincare', look: 6, hp: 5, money: -1500, snd: 'skin' },
+    salon: { ja: '美容院', en: 'Salon', look: 15, money: -6000, snd: 'salon' },
+    clothes: { ja: '服を買う', en: 'Clothes', look: 12, money: -10000, snd: 'clothes' },
     job:   { ja: 'バイト', en: 'Part-time', money: 8000, hp: -25, snd: 'job' },
-    game:  { ja: 'ゲーム三昧', en: 'Gaming', hp: 20, look: -2, snd: 'game' },
-    party: { ja: '合コン', en: 'Mixer', look: 3, hp: -15, money: -5000, snd: 'party' },
+    game:  { ja: 'ゲーム三昧', en: 'Gaming', hp: 20, look: -3, snd: 'game' },
+    party: { ja: '合コン', en: 'Mixer', look: 5, hp: -15, money: -5000, snd: 'party' },
     sleep: { ja: '寝る', en: 'Sleep', hp: 45, snd: 'sleep' },
   },
   // その日のひとこと（行動の結果）。3本ずつ、くじで
@@ -41,14 +42,14 @@ window.D = {
     lotto: { ja: '宝くじが当たった。3,000円', en: 'Won the lottery. 3,000 yen', money: 3000 },
     lotto1: { ja: '宝くじ1等。10万円', en: 'Lottery jackpot. 100,000 yen', money: 100000 },
     parents: { ja: '親から仕送り。じゃがいもと1万円', en: 'Care package from mom: potatoes and 10,000 yen', money: 10000 },
-    ramen: { ja: '夜中にラーメン。おいしい', en: 'Midnight ramen. Delicious', hp: 10, look: -2 },
-    buzz: { ja: '自撮りが少しバズった', en: 'My selfie went a bit viral', look: 5, need: 'look40' },
-    pimple: { ja: 'おでこにニキビ', en: 'A pimple on my forehead', look: -3 },
+    ramen: { ja: '夜中にラーメン。おいしい', en: 'Midnight ramen. Delicious', hp: 10, look: -3 },
+    buzz: { ja: '自撮りが少しバズった', en: 'My selfie went a bit viral', look: 8, need: 'look60' },
+    pimple: { ja: 'おでこにニキビ', en: 'A pimple on my forehead', look: -5 },
     cold: { ja: '風邪をひいた', en: 'Caught a cold', hp: -20 },
-    quiz: { ja: 'テレビのクイズに全問正解', en: 'Aced a TV quiz show from my couch', int: 3, need: 'int40' },
+    quiz: { ja: 'テレビのクイズに全問正解', en: 'Aced a TV quiz show from my couch', int: 5, need: 'int60' },
     pot: { ja: '「幸せになる壺」を勧められた', en: 'Offered a "Happiness Pot"', c: [{ ja: '買う 1万円', en: 'Buy it 10k', money: -10000, look: 0, res: { ja: 'ただの壺だった', en: 'It was just a pot' } }, { ja: '断る', en: 'Decline', res: { ja: '走って逃げた', en: 'Ran away' } }] },
     cat: { ja: 'やせた野良猫がこっちを見ている', en: 'A skinny stray cat is staring at me', c: [{ ja: 'エサをやる 500円', en: 'Feed it 500y', money: -500, cat: 1, res: { ja: 'のどを鳴らした', en: 'It purred' } }, { ja: '無視する', en: 'Ignore', res: { ja: '猫は去った', en: 'The cat left' } }] },
-    granny: { ja: '隣のおばあちゃんが重い米袋を運んでいる', en: 'The granny next door is hauling a rice sack', c: [{ ja: '手伝う', en: 'Help', hp: -10, str: 2, granny: 1, res: { ja: 'お茶をもらった', en: 'She gave me tea' } }, { ja: '会釈だけ', en: 'Just nod', res: { ja: '会釈を返された', en: 'She nodded back' } }] },
+    granny: { ja: '隣のおばあちゃんが重い米袋を運んでいる', en: 'The granny next door is hauling a rice sack', c: [{ ja: '手伝う', en: 'Help', hp: -10, str: 3, granny: 1, res: { ja: 'お茶をもらった', en: 'She gave me tea' } }, { ja: '会釈だけ', en: 'Just nod', res: { ja: '会釈を返された', en: 'She nodded back' } }] },
   },
   // 恋人。cond は game.js の judge と同じ順で決まる
   P: [
@@ -70,6 +71,15 @@ window.D = {
     { id: 'nurse', tier: 3, name: { ja: '看護師の森さん', en: 'Nurse Mori' }, tag: { ja: '整形外科の人', en: 'Orthopedic Nurse' }, say: { ja: 'また来たんですか', en: 'You again?' }, epi: { ja: '3本目のギプスで、プロポーズした。', en: 'Proposed while wearing my third cast.' }, hint: { ja: 'やりすぎて病院', en: 'Overdo it, end up in hospital' }, secret: 1 },
     { id: 'gamer', tier: 1, name: { ja: 'ピクセルちゃん', en: 'Pixel-chan' }, tag: { ja: '画面の中の子', en: 'Inside the Screen' }, say: { ja: 'つづきから はじめる？', en: 'CONTINUE?' }, epi: { ja: 'レベル99になった。現実はレベル1。', en: 'Level 99 in game. Level 1 in life.' }, hint: { ja: 'ゲーム三昧', en: 'Game all day' }, secret: 1 },
   ],
+  // 鏡の自分が変わった時のひとこと（絵の名前は sim.js の mirror）
+  ME: {
+    me0: { ja: '寝ぐせにもどった', en: 'Back to bed hair' }, me1: { ja: '髪型が決まった', en: 'Hair on point' }, me2: { ja: '輝きだした', en: 'Now sparkling' },
+    me_smart1: { ja: 'メガネをかけた', en: 'Got glasses' }, me_smart2: { ja: 'メガネが分厚くなった', en: 'Thicker glasses' }, me_smart3: { ja: '博士っぽくなった', en: 'Professor mode' },
+    me_buff1: { ja: '肩幅が広がった', en: 'Shoulders got wider' }, me_buff2: { ja: 'タンクトップが限界', en: 'Tank top at its limit' },
+    me_smartbuff: { ja: '筋肉と知性の両立', en: 'Brains and brawn' }, me_smartstyle: { ja: '知的でおしゃれ', en: 'Smart and stylish' }, me_buffstyle: { ja: '日焼けした色男', en: 'Tanned hunk' },
+    me_allhigh: { ja: '王子になった', en: 'Became a prince' }, me_tired: { ja: 'クマがすごい', en: 'Massive eye bags' }, me_injury: { ja: '包帯を巻いた', en: 'Bandaged up' },
+    me_gamer: { ja: 'ヘッドセットが外れない', en: "Headset won't come off" }, me_party: { ja: '日焼けして派手になった', en: 'Tanned and flashy' },
+  },
   // 称号（一番多くやった行動）
   TITLES: {
     gym: { ja: '筋肉の求道者', en: 'Seeker of Gains' }, study: { ja: '図書館の主', en: 'Lord of the Library' }, skin: { ja: 'もちもち肌の人', en: 'Mochi Skin' },
@@ -85,10 +95,12 @@ window.D = {
       night: 'そして30日がたった', bell: 'ピンポーン', door: 'ドアの向こうに、恋人がいる', who: 'あなたの恋人は',
       save: '画像を保存', post: 'Xでポスト', again: 'もう一回', toTitle: 'タイトルへ', next: 'つぎへ',
       invite: '結婚式のご案内', groom: 'あなた', and: 'と', unlocked: (a, b) => `${a} / ${b} 人`, locked: '？？？', hint: 'ヒント',
-      howBody: ['30日で自分を磨く。毎日、部屋の物を1つタップして1日すごす。', '本棚が知力、ダンベルが筋力、鏡が見た目。3つの組み合わせで恋人が決まる。', '体力とお金は有限。やりすぎると倒れる・病院・破産。', '日めくりの赤字は今日のおすすめ（2倍・半額）。', '恋人は全部で17人。図鑑を埋めよう。'],
+      howBody: ['30日で自分を磨く。毎日、部屋の物を1つタップして1日すごす。', '本棚が知力、ダンベルが筋力、鏡が見た目（どれも最大150）。3つの組み合わせで恋人が決まる。鏡の自分も変わっていく。', '体力とお金は有限。やりすぎると倒れる・病院・破産。', '日めくりの赤字は今日のおすすめ（2倍・半額）。', '恋人は全部で17人。図鑑を埋めよう。'],
       credits: '音: Kenney / rubberduck / StarNinjas / Almitory / Kerzoven / artisticdude / wubitog / eXpl0it3r / Saaabaaato / cori / Iwan Sounds（CC0・Public domain）',
       privacy: 'プライバシー', postText: (p, t) => `30日自分を磨いたら、恋人は「${p}」でした。称号: ${t} #自分磨き30日 #バカゲー`,
       share: '結果', load: '身だしなみ中',
+      tapChat: '顔をタップすると、ふたりのトークが見られる', read: '既読', chatInput: 'メッセージを入力', app: 'こいぶみ',
+      affBtn: 'この恋の続き、占ってみる？', affNote: '17歳以上・ポイント制の相談アプリです',
     },
     en: {
       title: '30-Day Glow-Up', sub: 'Your date matches your grind', start: 'Start 30 days', how: 'How to play', back: 'Back', zukan: 'Partner Book',
@@ -98,10 +110,12 @@ window.D = {
       night: '30 days later', bell: 'Ding-dong', door: 'Your date is behind the door', who: 'Your partner is',
       save: 'Save image', post: 'Post on X', again: 'Again', toTitle: 'Title', next: 'Next',
       invite: 'Wedding Invitation', groom: 'You', and: '&', unlocked: (a, b) => `${a} / ${b}`, locked: '???', hint: 'Hint',
-      howBody: ['Glow up in 30 days. Each day, tap one object in your room.', 'Bookshelf = brains, dumbbells = muscle, mirror = looks. The mix decides your partner.', 'Energy and money run out. Overdo it and you collapse, get hurt, or go broke.', 'Red text on the calendar is today\'s deal (x2 or half price).', '17 partners in total. Fill the book.'],
+      howBody: ['Glow up in 30 days. Each day, tap one object in your room.', 'Bookshelf = brains, dumbbells = muscle, mirror = looks (max 150 each). The mix decides your partner, and changes your reflection.', 'Energy and money run out. Overdo it and you collapse, get hurt, or go broke.', 'Red text on the calendar is today\'s deal (x2 or half price).', '17 partners in total. Fill the book.'],
       credits: 'Sounds: Kenney / rubberduck / StarNinjas / Almitory / Kerzoven / artisticdude / wubitog / eXpl0it3r / Saaabaaato / cori / Iwan Sounds (CC0 / Public domain)',
       privacy: 'Privacy', postText: (p, t) => `After a 30-day glow-up, my partner was "${p}". Title: ${t} #30DayGlowUp`,
       share: 'Result', load: 'Getting ready',
+      tapChat: 'Tap a face to read your chat history', read: 'Read', chatInput: 'Message', app: 'Koibumi',
+      affBtn: 'Want a real reading on your love life?', affNote: '17+ / points-based consultation app',
     },
   },
 }

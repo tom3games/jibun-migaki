@@ -68,6 +68,6 @@ for n in P:
     if os.path.exists(RAW + n + '.png'):
         im = Image.open(RAW + n + '.png').convert('RGB'); im.thumbnail((640, 960)); save(im, 'p_' + n, 78)
         t = im.crop((0, 0, im.width, im.width)); t.thumbnail((200, 200)); save(t, 't_' + n, 74)
-for n in ['me0', 'me1', 'me2']:
+for n in ['me0', 'me1', 'me2'] + ['me_' + k for k in ['smart1', 'smart2', 'smart3', 'buff1', 'buff2', 'smartbuff', 'smartstyle', 'buffstyle', 'allhigh', 'tired', 'injury', 'gamer', 'party']]:
     if os.path.exists(RAW + n + '.png'):
         im = Image.open(RAW + n + '.png').convert('RGB'); w, h = im.size; im = im.crop((0, int(h * 0.04), w, int(h * 0.04) + w)); im.thumbnail((360, 360)); save(im, n, 78)

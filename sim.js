@@ -1,13 +1,14 @@
 // 30日の仕組み（画面に依存しない）。ブラウザでは window.Sim、node では require/import で使う
 ;(function (root) {
   function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296 } }
-  const clamp = v => Math.max(0, Math.min(100, v))
+  let MAX = 150
+  const clamp = v => Math.max(0, Math.min(MAX, v))
 
   function create(D, seed) {
-    const r = rng(seed)
+    const r = rng(seed); MAX = D.MAX || 100
     const S = {
       seed, day: 1, done: false, int: D.START.int, str: D.START.str, look: D.START.look, money: D.START.money, hp: D.START.hp,
-      n: {}, sleeps: 0, injuries: 0, cat: 0, granny: 0, streak: 0, forced: 0, forcedWhy: '', choice: null, log: [], deals: [], events: [],
+      n: {}, sleeps: 0, injuries: 0, lastInj: -99, cat: 0, granny: 0, streak: 0, forced: 0, forcedWhy: '', choice: null, log: [], deals: [], events: [],
     }
     for (const k in D.ACT) S.n[k] = 0
     // その日のおすすめ（4割）
@@ -38,14 +39,14 @@
     if (a !== 'gym') S.streak = 0
     if (a === 'gym') {
       S.streak++
-      if (S.streak >= 3 || S.hp < 25) { S.injuries++; S.str += 3; S.hp = Math.max(S.hp - 25, 0); S.streak = 0; S.forced = 2; S.forcedWhy = 'injury'; out.msgs.push('injury') }
+      if (S.streak >= 3 || S.hp < 25) { S.injuries++; S.lastInj = S.day; S.str += 5; S.hp = Math.max(S.hp - 25, 0); S.streak = 0; S.forced = 2; S.forcedWhy = 'injury'; out.msgs.push('injury') }
       else { S.str += A.str * (x2 ? 2 : 1); S.hp += A.hp; if (S.streak === 2) out.msgs.push('shaky') }
     } else if (a === 'study') {
-      if (S.hp < 15) { S.int += 3; out.msgs.push('nap') } else { S.int += A.int * (x2 ? 2 : 1); S.hp += A.hp }
+      if (S.hp < 15) { S.int += 5; out.msgs.push('nap') } else { S.int += A.int * (x2 ? 2 : 1); S.hp += A.hp }
     } else if (a === 'salon') {
-      S.money += cost; if (S.r() < 0.15) { S.look -= 4; out.msgs.push('bang') } else S.look += A.look
+      S.money += cost; if (S.r() < 0.15) { S.look -= 6; out.msgs.push('bang') } else S.look += A.look
     } else if (a === 'clothes') {
-      S.money += cost; if (S.r() < 0.2) { S.look += 2; out.msgs.push('weird') } else S.look += A.look
+      S.money += cost; if (S.r() < 0.2) { S.look += 3; out.msgs.push('weird') } else S.look += A.look
     } else if (a === 'job') { S.money += A.money * (x2 ? 2 : 1); S.hp += A.hp }
     else if (a === 'skin') { S.money += cost; S.look += A.look * (x2 ? 2 : 1); S.hp += A.hp }
     else if (a === 'game') { S.hp += A.hp; S.look += A.look }
@@ -57,7 +58,7 @@
     const ev = S.events[S.day]
     if (ev && !S.forced) {
       const E = D.EVENTS[ev]
-      const ok = !E.need || (E.need === 'look40' ? S.look >= 40 : S.int >= 40)
+      const ok = !E.need || (E.need === 'look60' ? S.look >= 60 : S.int >= 60)
       if (ok) { out.ev = ev; if (E.c) S.choice = ev; else applyFx(S, E) }
     }
     out.d = diff(before, S)
@@ -99,7 +100,7 @@
     if (hiddenOk && S.granny >= 4) return 'granny'
     if (S.injuries >= 2) return 'nurse'
     if (S.n.game >= 10) return 'gamer'
-    if (S.int >= 85 && S.str < L && S.look < L) return 'robot'
+    if (S.int >= 128 && S.str < L && S.look < L) return 'robot'
     if (S.n.party >= 6) return 'goukon'
     if (S.money >= 60000 && S.n.job >= 8) return 'rich'
     if (I && St && Lk) return 'takane'
@@ -117,7 +118,28 @@
     for (const k in S.n) if (S.n[k] > m) { m = S.n[k]; best = k }
     return best
   }
-  const api = { create, act, choose, judge, title, deal }
+  // 鏡に映る自分（絵の名前 = img/<名前>.webp）。ケガ・疲れ・最近の遊び方が先、つぎに組み合わせ、最後に一番伸びた値の段階
+  function mirror(D, S) {
+    if (S.lastInj >= 0 && S.day - S.lastInj <= 5) return 'me_injury'
+    if (S.hp < 15) return 'me_tired'
+    const I = S.int, St = S.str, Lk = S.look, C = 75, top = Math.max(I, St, Lk)
+    if (I >= 90 && St >= 90 && Lk >= 90) return 'me_allhigh'
+    const last = S.log.slice(-6), cnt = a => last.filter(x => x === a).length
+    if (cnt('game') >= 3 && top < 70) return 'me_gamer'
+    if (S.n.party >= 3 && cnt('party') >= 2 && top < 90) return 'me_party'
+    if (I >= C && St >= C) return 'me_smartbuff'
+    if (I >= C && Lk >= C) return 'me_smartstyle'
+    if (St >= C && Lk >= C) return 'me_buffstyle'
+    // [段階, 値, 絵]。筋力と見た目の2段目は、知力の3段目と2段目の間に置く
+    const c = [
+      I >= 110 ? [3, I, 'me_smart3'] : I >= 70 ? [2, I, 'me_smart2'] : I >= 35 ? [1, I, 'me_smart1'] : [0, I, 'me0'],
+      St >= 90 ? [2.5, St, 'me_buff2'] : St >= 40 ? [1, St, 'me_buff1'] : [0, St, 'me0'],
+      Lk >= 90 ? [2.5, Lk, 'me2'] : Lk >= 40 ? [1, Lk, 'me1'] : [0, Lk, 'me0'],
+    ].sort((a, b) => b[0] - a[0] || b[1] - a[1])
+    return c[0][2]
+  }
+  const MIRRORS = ['me0', 'me1', 'me2', 'me_smart1', 'me_smart2', 'me_smart3', 'me_buff1', 'me_buff2', 'me_smartbuff', 'me_smartstyle', 'me_buffstyle', 'me_allhigh', 'me_tired', 'me_injury', 'me_gamer', 'me_party']
+  const api = { create, act, choose, judge, title, deal, mirror, MIRRORS }
   if (typeof module !== 'undefined' && module.exports) module.exports = api
   root.Sim = api
 })(typeof window !== 'undefined' ? window : globalThis)
