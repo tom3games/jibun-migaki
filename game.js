@@ -89,20 +89,27 @@
       document.body.appendChild(f); setTimeout(() => f.remove(), 1200)
     }
   }
+  // 最初の説明4つ。2026-11-11 本人「最初の解説の文字が出てる時間が長すぎる」: 前は1つずつ「物を押すまで」出っぱなしで、4回押すまで消えなかった。
+  // いまは読める長さ（1文字0.11秒＋0.9秒、1.8〜2.8秒）で自動で次へ進み、押せばすぐ次。window.__tipLog に出ていた時間を残す
+  let tutTimer = 0, tutAt = 0
+  const tipMs = t => Math.min(2800, Math.max(1800, 900 + (lang === 'ja' ? [...t].length * 110 : t.length * 45)))
+  function tutNext() { clearTimeout(tutTimer); if (tutStep >= 4) return; if (tutAt) (window.__tipLog = window.__tipLog || []).push(Math.round(performance.now() - tutAt)); tutAt = 0; tutStep++; if (tutStep >= 4) store.set('jm_tut', '1') }
   function tut() {
     const u = U(), h = $('#hand'), tip = $('#tip')
+    clearTimeout(tutTimer)
     if (tutStep >= 4 || store.get('jm_tut') === '1') { h.hidden = true; tip.hidden = true; return }
     const T = [[u.tut1, '#oRack'], [u.tut2, '#mirror'], [u.tut3, '#hpNote'], [u.tut4, '#cal']][tutStep]
     let t = T[0]; if (!touch) t = t.replace('タップ', 'クリック').replace('Tap', 'Click')
-    tip.textContent = t; tip.hidden = false
+    tip.textContent = t; tip.hidden = false; if (!tutAt) tutAt = performance.now()
     const r = $(T[1]).getBoundingClientRect(); h.hidden = false; h.style.left = (r.left + r.width / 2 - 8) + 'px'; h.style.top = (r.top + r.height * 0.45) + 'px'
+    tutTimer = setTimeout(() => { if ($('#vPlay').hidden) return; tutNext(); tut() }, tipMs(t) * FAST)
   }
 
   // ---- 遊び
   function start() {
     Snd.init(); bed(true)
     const seed = seedNext ?? (Date.now() % 1e9); seedNext = null
-    S = Sim.create(D, seed); busy = false; tutStep = 0; curMe = null; $('#meNote').classList.remove('in')
+    S = Sim.create(D, seed); busy = false; tutStep = 0; tutAt = 0; curMe = null; $('#meNote').classList.remove('in')
     show('vPlay'); render(); say(lang === 'ja' ? '今日から本気出す' : 'Today I start for real')
     $('#mirror').classList.remove('glow'); requestAnimationFrame(tut)
     window.TM && TM.start()
@@ -125,7 +132,7 @@
     else if (m.includes('shaky')) line = lang === 'ja' ? '腕がプルプルしてきた' : 'My arms are shaking'
     if (o.ev && !D.EVENTS[o.ev].c) { line = tx(D.EVENTS[o.ev]); cls = 'ev'; Sfx('ev') }
     say(line, cls)
-    if (tutStep < 4) { tutStep++; if (tutStep >= 4) store.set('jm_tut', '1') }
+    if (tutStep < 4) { tutNext(); tut() }
     render()
     if (S.choice) { await wait(500); openMemo(); busy = false; return }
     await afterDay(o)
@@ -253,7 +260,7 @@
   async function openChat(id) {
     const p = PMAP[id], u = U(), run = ++chatRun, log = $('#chLog')
     $('#chAv').src = `img/t_${id}.webp?${V}`; $('#chName').textContent = tx(p.name); $('#chTag').textContent = tx(p.tag); $('#chBack').lastChild.textContent = u.zukan
-    $('#chInput').textContent = u.chatInput
+    footMode('wait'); $('#chText').value = ''
     let t = '0:00'
     const list = CHATS[id].map(m => { if (m[4]) t = m[4]; const c = m.slice(); c.time = t; return c })
     log.innerHTML = `<div class="sys brand">${u.app}</div>`
@@ -269,9 +276,42 @@
       if (!chatSkip) await wait(m[0] === 's' ? 380 : 520)
     }
     window.__chatDone = true
+    if (run !== chatRun) return
+    // 最後に1回だけ、自分の一文を送れる。返信は来ないし、ずっと未読のまま（端末の中だけに残す）
+    const mine = myLine(id)
+    if (mine) { log.insertAdjacentHTML('beforeend', mineHTML(mine)); log.scrollTop = log.scrollHeight; footMode('sent') }
+    else footMode('open')
   }
+  // 自分の一文（相手ごと）。localStorage が使えない時は、この画面を開いている間だけ覚える
+  const MY_KEY = 'jm_myline', myMem = {}
+  function myLines() { try { return JSON.parse(store.get(MY_KEY) || '{}') || {} } catch (e) { return {} } }
+  function myLine(id) { return myLines()[id] || myMem[id] || null }
+  function saveMyLine(id, v) { myMem[id] = v; const all = myLines(); all[id] = v; try { localStorage.setItem(MY_KEY, JSON.stringify(all)) } catch (e) {} }
+  function mineHTML(v) { return `<div class="m y mine in"><div class="bb">${esc(v.t)}</div><div class="meta"><span class="unread">${U().unread}</span><span>${esc(v.at)}</span></div></div>` }
+  function footMode(mode) {
+    const f = $('#chFoot'), inp = $('#chText'), u = U()
+    f.hidden = mode === 'sent'; inp.placeholder = u.chatInput; $('#chSend').setAttribute('aria-label', u.send)
+    inp.disabled = mode !== 'open'; $('#chSend').disabled = mode !== 'open' || !inp.value.trim()
+    f.classList.toggle('wait', mode === 'wait')
+  }
+  function sendMine() {
+    const id = $('#chat').dataset.id, inp = $('#chText'), t = inp.value.replace(/\s+/g, ' ').trim().slice(0, 100)
+    if (!id || !t || myLine(id) || !window.__chatDone) return
+    const d = new Date(), v = { t, at: d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
+    saveMyLine(id, v); inp.value = ''; inp.blur()
+    const log = $('#chLog'); log.insertAdjacentHTML('beforeend', mineHTML(v)); log.scrollTop = log.scrollHeight
+    Sfx('msg'); footMode('sent'); fitChat()
+  }
+  // キーボードが出ても入力欄と送った吹き出しが隠れないように、トークの高さを見えている所に合わせる
+  function fitChat() {
+    const c = $('#chat'), vv = window.visualViewport
+    if (c.hidden || !vv) { c.style.height = ''; c.style.top = ''; c.style.bottom = ''; return }
+    c.style.top = vv.offsetTop + 'px'; c.style.height = vv.height + 'px'; c.style.bottom = 'auto'
+    const log = $('#chLog'); log.scrollTop = log.scrollHeight
+  }
+  if (window.visualViewport) { visualViewport.addEventListener('resize', fitChat); visualViewport.addEventListener('scroll', fitChat) }
   let chatSkip = false
-  function closeChat() { chatRun++; chatSkip = false; $('#chat').hidden = true }
+  function closeChat() { chatRun++; chatSkip = false; $('#chText').blur(); $('#chat').hidden = true; fitChat() }
 
   // ---- 結果画面だけに出す PR ボタン（config.js の AFF_URL が空なら何も出さない）
   function aff() {
@@ -307,6 +347,11 @@
   $('#grid').addEventListener('click', e => { const c = e.target.closest('.cell'); if (!c) return; info(c.dataset.id); if (book.has(c.dataset.id)) { Sfx('tap'); chatSkip = false; openChat(c.dataset.id) } })
   on('#chBack', () => { Sfx('tap'); closeChat() })
   on('#chLog', () => { chatSkip = true })
+  $('#chText').addEventListener('input', () => { $('#chSend').disabled = $('#chText').disabled || !$('#chText').value.trim() })
+  $('#chText').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); sendMine() } })
+  $('#chText').addEventListener('focus', () => { chatSkip = true; setTimeout(fitChat, 60); setTimeout(fitChat, 400) })
+  $('#chText').addEventListener('blur', () => setTimeout(fitChat, 60))
+  on('#chSend', () => sendMine())
   on('#bAff', () => { window.TM && TM.aff && TM.aff() })
   on('#bC0', () => choose(0)); on('#bC1', () => choose(1))
   on('#bNext', () => { Sfx('tap'); result() })
@@ -327,13 +372,13 @@
     itemXY: a => { const el = a === 'c0' ? $('#bC0') : a === 'c1' ? $('#bC1') : $(`.obj[data-a="${a}"]`); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.6, w: r.width, h: r.height } },
     setLang: l => { lang = l; applyLang() }, book: () => [...book], setBook: ids => { book.clear(); ids.forEach(i => book.add(i)) },
     cellXY: id => { const r = $(`.cell[data-id="${id}"]`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height } },
-    mirror: () => S && Sim.mirror(D, S), meSrc: () => $('#meImg').getAttribute('src'), aff,
+    mirror: () => S && Sim.mirror(D, S), meSrc: () => $('#meImg').getAttribute('src'), aff, myLine, tipLog: () => window.__tipLog || [], tutStep: () => tutStep,
   }
 
   // ---- 読み込み（最初の画面に要る絵を数えてバーを進める）
   const CORE = ['room', 'o_mirror', 'me0', 'o_pig', 'shelf0', 'rack0', 'o_skin', 'o_salon', 'o_clothes', 'o_apron', 'o_game', 'o_phone', 'o_bed']
   let got = 0
-  const hideLoad = () => { const l = $('#loading'); if (l.dataset.gone) return; l.dataset.gone = 1; l.style.opacity = 0; setTimeout(() => { l.hidden = true }, 360) }
+  const hideLoad = () => { const l = $('#loading'); if (l.dataset.gone) return; l.dataset.gone = 1; l.style.opacity = 0; l.style.pointerEvents = 'none'; setTimeout(() => { l.hidden = true }, 360) }
   applyLang(); muteIcon()
   Promise.all(CORE.map(n => loadImg(`img/${n}.webp?${V}`).then(() => { got++; $('#loadBar i').style.width = (got / CORE.length * 100) + '%' }))).then(() => {
     hideLoad(); window.__jmReady = true

@@ -224,8 +224,17 @@ img{-webkit-user-drag:none;user-select:none}
 #chLog .sys{align-self:center;background:rgba(42,29,20,.16);color:#5a4636;font-size:11px;font-weight:700;padding:2px 12px;border-radius:10px;margin:3px 0}
 #chLog .sys.brand{background:none;color:#c8552e;font-family:var(--pop);font-weight:400;font-size:13px;letter-spacing:.1em}
 .chFoot{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:#fffaf0;border-top:1px solid #e0cfb4}
-#chInput{flex:1;height:36px;border-radius:18px;background:#efe3cf;color:#a08c74;font-size:14px;display:flex;align-items:center;padding:0 14px}
-.chFoot svg{width:30px;height:30px;flex:none}
+#chText{flex:1;min-width:0;height:38px;border-radius:19px;border:1.5px solid #e0cfb4;background:#fff;color:var(--ink);font:16px var(--sans);padding:0 14px;-webkit-user-select:text;user-select:text;outline:none}
+#chText:focus{border-color:#c8552e}
+#chText:disabled{background:#efe3cf}
+#chText::placeholder{color:#a08c74}
+.chFoot.wait{opacity:.6}
+.chFoot[hidden]{display:none}
+#chSend{width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex:none}
+#chSend svg{width:32px;height:32px}
+#chSend circle{fill:#c8552e}
+#chSend:disabled circle{fill:#e3c9a8}
+#chLog .mine .unread{color:#c8552e;font-weight:700}
 @media (max-height:700px){#hud{min-height:84px}#wall{min-height:132px}#lineBox{height:50px}#bubble{padding:4px 12px}.lab small{font-size:10px}}
 </style>
 </head>
@@ -295,7 +304,7 @@ img{-webkit-user-drag:none;user-select:none}
 <div id="chat" hidden><div class="ph0">
   <div class="chHead"><button id="chBack" aria-label="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></button><img id="chAv" alt=""><div class="chWho"><b id="chName"></b><span id="chTag"></span></div></div>
   <div id="chLog"></div>
-  <div class="chFoot" aria-hidden="true"><div id="chInput"></div><svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="14" fill="#e3c9a8"/><path d="M9 15l13-6-5 13-2-5z" fill="#fff"/></svg></div>
+  <div class="chFoot" id="chFoot"><input id="chText" type="text" maxlength="100" enterkeyhint="send" autocomplete="off" autocapitalize="off"><button id="chSend" disabled><svg viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14"/><path d="M9 15l13-6-5 13-2-5z" fill="#fff"/></svg></button></div>
 </div></div>
 <div id="flash"></div>
 
@@ -304,7 +313,7 @@ img{-webkit-user-drag:none;user-select:none}
   var opt={passive:false};
   ['gesturestart','gesturechange','gestureend'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault()},opt)});
   document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1)e.preventDefault()},opt);
-  var last=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-last<300&&!(e.target.closest&&e.target.closest('button,a')))e.preventDefault();last=n},opt);
+  var last=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-last<300&&!(e.target.closest&&e.target.closest('button,a,input')))e.preventDefault();last=n},opt);
   document.addEventListener('dblclick',function(e){e.preventDefault()},opt);
   window.addEventListener('wheel',function(e){if(e.ctrlKey)e.preventDefault()},opt);
   window.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&['+','-','=','0',';'].indexOf(e.key)>=0)e.preventDefault()});
@@ -324,13 +333,13 @@ img{-webkit-user-drag:none;user-select:none}
 })();
 </script>
 <script src="tm.js?v=3" data-game="jibun-migaki"></script>
-<script src="sfx.js?v=2"></script>
+<script src="sfx.js?v=4"></script>
 <script src="config.js?v=1"></script>
-<script src="data.js?v=3"></script>
+<script src="data.js?v=4"></script>
 <script src="chats.js?v=1"></script>
 <script src="sim.js?v=3"></script>
 <script src="plans.js?v=2"></script>
-<script src="game.js?v=2"></script>
+<script src="game.js?v=4"></script>
 <script src="support.js?v=3" data-ja="プロテイン" data-en="a protein shake"></script>
 </body>
 </html>

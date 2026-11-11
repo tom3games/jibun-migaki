@@ -137,6 +137,40 @@ await t('トークの中だけスクロールし、ページはスクロール�
   const r = await p.evaluate(() => { const l = document.querySelector('#chLog'); return { page: document.documentElement.scrollHeight <= innerHeight, ov: getComputedStyle(l).overflowY } })
   await p.click('#chBack'); expect(r.page && r.ov === 'auto', JSON.stringify(r))
 })
+// ---- 2026-11-11 図鑑のトークの最後に、自分の一文を1回だけ送れる（返信なし・ずっと未読・端末の中だけ）
+await t('トーク: 流れ終わるまで入力欄は押せない→最後に1回だけ送れる・未読・返信なし・入力欄が消える', async () => {
+  const xy = await p.evaluate(() => jm.cellXY('imo')); await p.mouse.click(xy.x, xy.y)
+  await p.waitForSelector('#chat:not([hidden])')
+  const early = await p.evaluate(() => ({ dis: document.querySelector('#chText').disabled, done: window.__chatDone }))
+  await p.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+  const n0 = await p.evaluate(() => document.querySelectorAll('#chLog .m').length)
+  await p.click('#chText'); await p.keyboard.type('来週ひま？<b>x</b>'); await p.keyboard.press('Enter'); await p.waitForTimeout(1500)
+  const r = await p.evaluate(() => { const m = [...document.querySelectorAll('#chLog .m.mine')]; return { n: document.querySelectorAll('#chLog .m').length, mine: m.length, txt: m[0] && m[0].querySelector('.bb').textContent, tag: !!document.querySelector('#chLog .mine b'), meta: m[0] && m[0].querySelector('.meta').textContent, foot: document.querySelector('#chFoot').hidden, last: document.querySelector('#chLog').lastElementChild.classList.contains('mine'), ls: JSON.parse(localStorage.getItem('jm_myline') || '{}') } })
+  await p.screenshot({ path: `${ROOT}/shots/v-chat-mine.png` })
+  expect(early.dis && !early.done && r.mine === 1 && r.n === n0 + 1 && r.txt === '来週ひま？<b>x</b>' && !r.tag && /未読/.test(r.meta) && !/既読/.test(r.meta) && r.foot && r.last && r.ls.imo && r.ls.imo.t === r.txt, JSON.stringify({ early, n0, r }))
+  await p.click('#chBack')
+  return { meta: r.meta }
+})
+await t('トーク: 開き直しても自分の一文と「未読」が残り、入力欄は出ない。ほかの子はまだ送れる・空白だけは送れない', async () => {
+  let xy = await p.evaluate(() => jm.cellXY('imo')); await p.mouse.click(xy.x, xy.y); await p.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+  const a = await p.evaluate(() => ({ mine: document.querySelectorAll('#chLog .m.mine').length, unread: !!document.querySelector('#chLog .mine .unread'), foot: document.querySelector('#chFoot').hidden }))
+  await p.click('#chBack')
+  xy = await p.evaluate(() => jm.cellXY('granny')); await p.mouse.click(xy.x, xy.y); await p.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+  const b = await p.evaluate(() => ({ mine: document.querySelectorAll('#chLog .m.mine').length, foot: document.querySelector('#chFoot').hidden, dis: document.querySelector('#chText').disabled, send: document.querySelector('#chSend').disabled }))
+  await p.click('#chText'); await p.keyboard.type('   '); await p.keyboard.press('Enter'); await p.waitForTimeout(200)
+  const c = await p.evaluate(() => ({ mine: document.querySelectorAll('#chLog .m.mine').length, send: document.querySelector('#chSend').disabled }))
+  await p.evaluate(() => { document.querySelector('#chText').value = '' })
+  await p.click('#chBack')
+  expect(a.mine === 1 && a.unread && a.foot && b.mine === 0 && !b.foot && !b.dis && b.send && c.mine === 0 && c.send, JSON.stringify({ a, b, c }))
+})
+await t('トーク: 送信ボタンでも送れる（言語を切り替えても残る・英語は Unread）', async () => {
+  const xy = await p.evaluate(() => jm.cellXY('granny')); await p.mouse.click(xy.x, xy.y); await p.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+  await p.click('#chText'); await p.keyboard.type('お茶おいしかったです'); await p.click('#chSend'); await p.waitForTimeout(300)
+  await p.evaluate(() => jm.setLang('en')); await p.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+  const r = await p.evaluate(() => ({ mine: document.querySelectorAll('#chLog .m.mine').length, meta: (document.querySelector('#chLog .mine .meta') || {}).textContent, foot: document.querySelector('#chFoot').hidden }))
+  await p.evaluate(() => jm.setLang('ja')); await p.waitForTimeout(300); await p.click('#chBack')
+  expect(r.mine === 1 && /Unread/.test(r.meta) && r.foot, JSON.stringify(r))
+})
 await p.click('#bookClose')
 await t('ずっと寝ると一番下（抱き枕・tier 0）', async () => {
   const tiers = await p.evaluate(() => Object.fromEntries(D.P.map(x => [x.id, x.tier])))
@@ -196,6 +230,44 @@ await t('遊びの画面で同時に出る文字は2つまで（吹き出し・�
 })
 await q.close()
 
+// ---- localStorage が使えない（保存が例外を投げる）時も、送れてその場では残る・エラーなし
+{
+  const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 390, height: 844 } }); await muteContext(ctx)
+  await ctx.addInitScript(() => { try { localStorage.clear() } catch (e) {} Storage.prototype.setItem = function () { throw new Error('quota') } })
+  const z = await ctx.newPage(); z.errs = []; z.on('pageerror', e => z.errs.push(e.message))
+  await z.goto(URL0); await z.waitForFunction(() => window.__jmReady)
+  await t('トーク: 保存できない端末でも送れる（例外で止まらない）', async () => {
+    await z.evaluate(() => { jm.setBook(['imo']); document.querySelector('#bBook').click() })
+    const xy = await z.evaluate(() => jm.cellXY('imo')); await z.mouse.click(xy.x, xy.y); await z.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+    await z.click('#chText'); await z.keyboard.type('元気？'); await z.keyboard.press('Enter'); await z.waitForTimeout(200)
+    await z.click('#chBack'); await z.mouse.click(xy.x, xy.y); await z.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+    const r = await z.evaluate(() => ({ mine: document.querySelectorAll('#chLog .m.mine').length, foot: document.querySelector('#chFoot').hidden }))
+    expect(r.mine === 1 && r.foot && !z.errs.length, JSON.stringify(r) + z.errs.join('|'))
+  })
+  await ctx.close()
+}
+// ---- 最初の説明（4つ）は読める長さで自動で進み、押さなくても消える
+{
+  const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 390, height: 844 } }); await muteContext(ctx)
+  await ctx.addInitScript(() => { try { if (!sessionStorage.getItem('__k')) { localStorage.clear(); sessionStorage.setItem('__k', '1') } } catch (e) {} })
+  const z = await ctx.newPage(); z.errs = []; z.on('pageerror', e => z.errs.push(e.message))
+  await z.goto(URL0); await z.waitForFunction(() => window.__jmReady)
+  await t('最初の説明: 押さなくても1つ1.8〜2.8秒で次へ進み、4つで消える（前は押すまで出っぱなし）', async () => {
+    await z.click('#bStart'); const t0 = Date.now()
+    await z.waitForFunction(() => document.querySelector('#tip').hidden && document.querySelector('#hand').hidden, null, { timeout: 20000 })
+    const sec = (Date.now() - t0) / 1000, log = await z.evaluate(() => jm.tipLog())
+    expect(log.length === 4 && log.every(v => v >= 1700 && v <= 2900) && sec < 12 && !z.errs.length, JSON.stringify({ sec, log }) + z.errs.join('|'))
+    return { sec: +sec.toFixed(1), log }
+  })
+  await t('最初の説明: 物を押すと、すぐ次の説明へ（待たない）', async () => {
+    await z.evaluate(() => localStorage.removeItem('jm_tut')); await z.reload(); await z.waitForFunction(() => window.__jmReady)
+    await z.click('#bStart'); await z.waitForTimeout(500)
+    const xy = await z.evaluate(() => jm.itemXY('study')); await z.mouse.click(xy.x, xy.y); await z.waitForTimeout(100)
+    const r = await z.evaluate(() => ({ step: jm.tutStep(), log: jm.tipLog(), tip: document.querySelector('#tip').textContent }))
+    expect(r.step === 1 && r.log.length === 1 && r.log[0] < 900, JSON.stringify(r)); return r
+  })
+  await ctx.close()
+}
 // ---- AFF_URL が空なら PR は何も出さない（config.js を空に差し替え）
 {
   const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 390, height: 844 } }); await muteContext(ctx)
@@ -339,6 +411,20 @@ await t('WebKit: タップだけで「高嶺の花」', async () => { const r = 
 await t('WebKit: 実際には無音（始めた後・音を鳴らした後）', async () => {
   const r = await wp.evaluate(() => ({ ok: window.__muteOk(), calls: Object.keys(window.__sfxCalls).length }))
   expect(r.ok && r.calls > 3, JSON.stringify(r)); return r
+})
+await t('WebKit: トークの入力欄は16px以上（iOS の自動拡大なし）・キーボードで見える高さが縮んでも入力欄と送った一文が見える', async () => {
+  await wp.evaluate(() => { jm.setBook(['imo', 'pillow']); localStorage.removeItem('jm_myline'); document.querySelectorAll('main.view').forEach(v => v.hidden = v.id !== 'vTitle'); document.querySelector('#bBook').click() })
+  const xy = await wp.evaluate(() => jm.cellXY('pillow')); await wp.touchscreen.tap(xy.x, xy.y); await wp.waitForFunction(() => window.__chatDone, null, { timeout: 15000 })
+  const fs = await wp.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#chText')).fontSize))
+  await wp.tap('#chText'); await wp.setViewportSize({ width: 390, height: 500 }); await wp.waitForTimeout(500)
+  const a = await wp.evaluate(() => { const r = document.querySelector('#chText').getBoundingClientRect(); return { bottom: Math.round(r.bottom), top: Math.round(r.top), H: visualViewport.height, focus: document.activeElement.id } })
+  await wp.keyboard.type('起きてる？'); await wp.keyboard.press('Enter'); await wp.waitForTimeout(400)
+  const b = await wp.evaluate(() => { const m = document.querySelector('#chLog .mine'); const r = m.getBoundingClientRect(), L = document.querySelector('#chLog').getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), lb: Math.round(L.bottom), H: visualViewport.height } })
+  await wp.screenshot({ path: ROOT + '/shots/v-webkit-chat-kb.png' })
+  await wp.setViewportSize({ width: 390, height: 844 }); await wp.waitForTimeout(300); await wp.screenshot({ path: ROOT + '/shots/v-webkit-chat-sent.png' })
+  await wp.tap('#chBack'); await wp.tap('#bookClose')
+  expect(fs >= 16 && a.focus === 'chText' && a.top >= 0 && a.bottom <= a.H && b.bottom <= b.lb + 1 && b.top >= 0, JSON.stringify({ fs, a, b }))
+  return { fs, a, b }
 })
 await awayTest(wp, { fb: 'snd/bgm.mp3' })
 await t('WebKit: エラーなし', async () => { expect(wp.errs.length === 0, wp.errs.join('|')) })
