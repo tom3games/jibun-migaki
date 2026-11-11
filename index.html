@@ -42,7 +42,7 @@ img{-webkit-user-drag:none;user-select:none}
 #corner svg{width:20px;height:20px;fill:#fff3dc}
 
 /* タイトル: 鏡に貼ったメモ */
-#vTitle .wrap{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(54px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom))}
+#vTitle .wrap{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(54px + env(safe-area-inset-top)) 16px calc(18px + calc(env(safe-area-inset-bottom) + var(--inapp-bot,0px)))}
 #vTitle::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(42,29,20,.15),rgba(42,29,20,.55))}
 .tMirror{position:relative;width:min(62vw,250px,34svh);aspect-ratio:231/300}
 .tMirror .mfr{position:absolute;inset:0;width:100%;height:100%}
@@ -60,7 +60,7 @@ img{-webkit-user-drag:none;user-select:none}
 .tLinks button{min-height:42px;padding:0 10px;color:#fff3dc;font-family:var(--hand);font-size:16px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 
 /* 遊び: 部屋 */
-#vPlay .wrap{display:flex;flex-direction:column;padding:calc(6px + env(safe-area-inset-top)) 8px calc(6px + env(safe-area-inset-bottom))}
+#vPlay .wrap{display:flex;flex-direction:column;padding:calc(6px + env(safe-area-inset-top)) 8px calc(6px + calc(env(safe-area-inset-bottom) + var(--inapp-bot,0px)))}
 #hud{display:flex;align-items:flex-start;gap:8px;height:16svh;min-height:92px;padding-right:94px}
 #cal{position:relative;width:min(24vw,104px);height:100%;flex:none}
 .cpage{position:absolute;inset:8px 0 0;background:#fff;border-radius:2px;box-shadow:0 3px 8px rgba(0,0,0,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1}
@@ -132,7 +132,7 @@ img{-webkit-user-drag:none;user-select:none}
 #memoCard button:first-child{background:#2a1d14;color:#fff3dc}
 
 /* 30日後: アパートのドア */
-#vReveal{background:radial-gradient(ellipse at 50% 45%,#5b4636,#1d140e 75%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(54px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom))}
+#vReveal{background:radial-gradient(ellipse at 50% 45%,#5b4636,#1d140e 75%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(54px + env(safe-area-inset-top)) 14px calc(14px + calc(env(safe-area-inset-bottom) + var(--inapp-bot,0px)))}
 #rvText{font-family:var(--pop);color:#fff3dc;font-size:clamp(18px,5.4vw,24px);text-align:center;min-height:1.6em;text-shadow:0 2px 8px #000}
 #stage{position:relative;width:min(78vw,330px,40svh);aspect-ratio:2/3;perspective:900px}
 #portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:6px solid #3a3a3a;background:#111}
@@ -154,7 +154,7 @@ img{-webkit-user-drag:none;user-select:none}
 #flash{position:fixed;inset:0;z-index:50;background:#fff;opacity:0;pointer-events:none}
 
 /* 結果: 招待状 */
-#vEnd{background:radial-gradient(ellipse at 50% 30%,#5b4636,#1d140e);display:flex;flex-direction:column;align-items:center;padding:calc(50px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));gap:8px}
+#vEnd{background:radial-gradient(ellipse at 50% 30%,#5b4636,#1d140e);display:flex;flex-direction:column;align-items:center;padding:calc(50px + env(safe-area-inset-top)) 10px calc(8px + calc(env(safe-area-inset-bottom) + var(--inapp-bot,0px)));gap:8px}
 #cardBox{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
 #card{display:block;max-width:100%;max-height:100%;box-shadow:0 12px 28px rgba(0,0,0,.5)}
 .endBtns{width:min(100%,420px);display:flex;flex-direction:column;gap:6px}
@@ -163,7 +163,7 @@ img{-webkit-user-drag:none;user-select:none}
 #bAgain{background:#d23a2a;border:0;font-family:var(--pop);font-weight:400;font-size:16px}
 
 /* 図鑑・遊び方 */
-.ovl{position:fixed;inset:0;z-index:45;background:rgba(29,20,14,.96);display:flex;flex-direction:column;padding:calc(52px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));gap:8px;color:#fff3dc}
+.ovl{position:fixed;inset:0;z-index:45;background:rgba(29,20,14,.96);display:flex;flex-direction:column;padding:calc(52px + env(safe-area-inset-top)) 12px calc(10px + calc(env(safe-area-inset-bottom) + var(--inapp-bot,0px)));gap:8px;color:#fff3dc}
 .ovl h2{font-family:var(--pop);font-weight:400;font-size:20px}
 .ovl h2 span{font-family:var(--hand);font-size:15px;margin-left:8px;color:#f3d36b}
 #grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:6px}
@@ -223,7 +223,7 @@ img{-webkit-user-drag:none;user-select:none}
 #chLog .vc b{font-size:13px;font-weight:700}
 #chLog .sys{align-self:center;background:rgba(42,29,20,.16);color:#5a4636;font-size:11px;font-weight:700;padding:2px 12px;border-radius:10px;margin:3px 0}
 #chLog .sys.brand{background:none;color:#c8552e;font-family:var(--pop);font-weight:400;font-size:13px;letter-spacing:.1em}
-.chFoot{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:#fffaf0;border-top:1px solid #e0cfb4}
+.chFoot{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px calc(8px + calc(env(safe-area-inset-bottom) + var(--inapp-bot,0px)));background:#fffaf0;border-top:1px solid #e0cfb4}
 #chText{flex:1;min-width:0;height:38px;border-radius:19px;border:1.5px solid #e0cfb4;background:#fff;color:var(--ink);font:16px var(--sans);padding:0 14px;-webkit-user-select:text;user-select:text;outline:none}
 #chText:focus{border-color:#c8552e}
 #chText:disabled{background:#efe3cf}
@@ -340,6 +340,6 @@ img{-webkit-user-drag:none;user-select:none}
 <script src="sim.js?v=3"></script>
 <script src="plans.js?v=2"></script>
 <script src="game.js?v=4"></script>
-<script src="support.js?v=3" data-ja="プロテイン" data-en="a protein shake"></script>
+<script src="support.js?v=4" data-ja="プロテイン" data-en="a protein shake"></script>
 </body>
 </html>
