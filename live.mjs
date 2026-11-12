@@ -39,7 +39,9 @@ for (const [name, bt, opts] of [['chromium', chromium, {}], ['webkit', webkit, {
   const who = await p.evaluate(() => jm.state().who), mute = await p.evaluate(() => window.__muteOk ? window.__muteOk() : null)
   out.push(`${name}: plan=${plan} who=${who} mute=${mute} game.js=${await p.evaluate(() => document.querySelector('script[src^="game.js"]').getAttribute('src'))}`)
   await p.screenshot({ path: `shots/live-${name}.png` })
-  const og = await p.evaluate(async () => { const r = await fetch(document.querySelector('meta[property="og:image"]').content); return r.status + ' ' + r.headers.get('content-type') })
+  // og:image は横丁（別のドメイン）を指すので、ページの中からでなく Node で取る
+  const ogUrl = await p.evaluate(() => document.querySelector('meta[property="og:image"]').content)
+  const og = await Promise.all([ogUrl, URL0 + 'og.png'].map(async u => { const r = await fetch(u); return u.replace(/^https:\/\//, '') + ' ' + r.status + ' ' + r.headers.get('content-type') })).then(a => a.join(' / '))
   out.push(`${name}: og=${og} errors=${errs.length ? errs.join(' | ') : 'none'}`)
   await b.close()
 }
