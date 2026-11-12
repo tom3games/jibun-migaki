@@ -24,6 +24,8 @@ for (let i = 0; i < 60; i++) {
   if (i === 12) await p.screenshot({ path: `${ROOT}/shots/${N}-play12.png` })
 }
 await p.waitForTimeout(800); await p.screenshot({ path: `${ROOT}/shots/${N}-reveal.png` })
+await p.waitForFunction(() => jm.door() && jm.door().ready); await p.screenshot({ path: `${ROOT}/shots/${N}-door.png` })
+for (let i = 0; i < 2; i++) { const xy = await p.evaluate(() => jm.doorXY().knob); await p.mouse.click(xy.x, xy.y); await p.waitForTimeout(700) }
 await p.waitForSelector('#bNext:not([hidden])'); await p.screenshot({ path: `${ROOT}/shots/${N}-reveal2.png` })
 await p.tap('#bNext'); await p.waitForFunction(() => window.__jmCardDone); await p.waitForTimeout(300); await p.screenshot({ path: `${ROOT}/shots/${N}-end.png` })
 await p.tap('#bBook2'); await p.waitForTimeout(300); await p.screenshot({ path: `${ROOT}/shots/${N}-book.png` })

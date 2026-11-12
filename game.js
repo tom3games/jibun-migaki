@@ -18,6 +18,7 @@
     cloth: ['snd/cloth1.mp3', 'snd/cloth2.mp3'], coin: ['snd/coin1.mp3', 'snd/coin2.mp3'], clink: ['snd/clink1.mp3', 'snd/clink2.mp3'], meow: 'snd/meow.mp3',
     swish: ['snd/swish1.mp3', 'snd/swish2.mp3'], pop: ['snd/pop1.mp3', 'snd/pop2.mp3'], applause: 'snd/applause9.mp3', snore: 'snd/snore.mp3', drum: 'snd/drumroll.mp3',
     win: 'snd/win.mp3', win2: 'snd/win2.mp3', lose: 'snd/lose.mp3', gamej: 'snd/gamejingle.mp3', tap: 'snd/tap.mp3', stamp: 'snd/stamp.mp3',
+    knock: ['snd/knock1.mp3', 'snd/knock2.mp3', 'snd/knock3.mp3'], bell: 'snd/bell.mp3', creak: 'snd/creak.mp3', dopen: 'snd/dooropen.mp3', dclose: 'snd/doorclose.mp3',
   })
   const CUE = {
     gym: [['clank', { vol: 0.8 }], ['clank', { vol: 0.6, delay: 0.25 }]], study: [['book', { vol: 0.8 }]], skin: [['pop', { vol: 0.6 }], ['pop', { vol: 0.45, delay: 0.15 }]],
@@ -26,6 +27,7 @@
     tear: [['tear', { vol: 0.6 }]], ev: [['pop', { vol: 0.5, rate: 0.8 }]], meow: [['meow', { vol: 0.8 }]], bad: [['clank', { vol: 0.7, rate: 0.7 }], ['stamp', { vol: 0.6, delay: 0.1 }]],
     tap: [['tap', { vol: 0.45, jitter: 0 }]], msg: [['pop', { vol: 0.35, rate: 1.2 }]], drum: [['drum', { vol: 0.85 }]], stamp: [['stamp', { vol: 1 }]],
     win: [['win', { vol: 0.8 }], ['applause', { vol: 0.45, delay: 0.3 }]], mid: [['win2', { vol: 0.8 }]], lose: [['lose', { vol: 0.8 }]],
+    knock: [['knock', { vol: 0.9 }]], bell: [['bell', { vol: 0.7, jitter: 0 }]], creak: [['creak', { vol: 0.6 }]], dopen: [['dopen', { vol: 0.85 }]], dclose: [['dclose', { vol: 0.7 }]], peep: [['tap', { vol: 0.3, rate: 0.7 }]], voice: [['pop', { vol: 0.3, rate: 0.9 }]],
   }
   window.__sfxCalls = {}
   const Sfx = n => { window.__sfxCalls[n] = (window.__sfxCalls[n] || 0) + 1; for (const [k, o] of CUE[n] || []) Snd.play(k, o) }
@@ -109,6 +111,7 @@
   function start() {
     Snd.init(); bed(true)
     const seed = seedNext ?? (Date.now() % 1e9); seedNext = null
+    rvRun++; RV = null; drum(false)
     S = Sim.create(D, seed); busy = false; tutStep = 0; tutAt = 0; curMe = null; $('#meNote').classList.remove('in')
     show('vPlay'); render(); say(lang === 'ja' ? '今日から本気出す' : 'Today I start for real')
     $('#mirror').classList.remove('glow'); requestAnimationFrame(tut)
@@ -164,28 +167,134 @@
     await afterDay(r)
   }
 
-  // ---- 30日後
+  // ---- 30日後: ドアは自分の手で開ける（2026-11-12 本人「扉を自分の手で開くみたいな感じに」）
+  // 前は3.6秒で勝手に開いた。いまはノブをつかんで左へ引く（なぞった分だけ開く）。途中で離すと半分より手前なら閉じ戻り、先なら一気に開く。
+  // タップだけなら、1回目で少し開いて止まり（すき間から一言）、2回目で開く。のぞき穴を押すとぼやけた影だけ見える。
+  // 待っている間はドラムロール。ノックが鳴り、すき間から光と影が漏れる。開け切るまで恋人の絵はぼかして暗くしておく。
+  // 時間は全部 performance.now() で数える（FAST は検証で縮める倍率）
+  const pnow = () => performance.now()
+  const pwait = ms => new Promise(r => { const end = pnow() + ms * FAST; const f = () => { if (pnow() >= end) r(); else requestAnimationFrame(f) }; requestAnimationFrame(f) })
+  const DOOR_MAX = 104, AJAR = 0.32
+  let RV = null, rvRun = 0
+  function setDoor(p) {
+    const d = $('#door'); RV.p = Math.max(0, Math.min(1, p))
+    const h = Math.round(($('#stage').clientWidth || 300) / 2)   // 遠近の中心を舞台のまん中に（ちょうつがい側だと、すき間が扉の手前の縁に隠れる）
+    d.style.transform = `translateX(${h}px) perspective(900px) translateX(${-h}px) rotateY(${(-DOOR_MAX * RV.p).toFixed(2)}deg)`; d.style.setProperty('--p', RV.p.toFixed(3))
+    $('#glow').style.opacity = String(0.35 + Math.min(1, RV.p * 3) * 0.65); $('#leaks').style.opacity = String(Math.max(0, 1 - RV.p * 6))
+    if (RV.p > 0.05 && !RV.creaked) { RV.creaked = true; Sfx('creak') }
+    if (RV.p < 0.02) RV.creaked = false
+    if (RV.p >= 0.12 && !RV.peeked && !RV.opened) peekLine()
+  }
+  function animDoor(to, ms) {
+    const run = rvRun, from = RV.p, t0 = pnow(), dur = Math.max(1, ms * FAST); RV.anim = true
+    return new Promise(r => {
+      const f = () => { if (run !== rvRun) return r(); const k = Math.min(1, (pnow() - t0) / dur), e = 1 - Math.pow(1 - k, 3); setDoor(from + (to - from) * e); if (k < 1) requestAnimationFrame(f); else { RV.anim = false; r() } }
+      requestAnimationFrame(f)
+    })
+  }
+  function rvSay(key) { RV.txt = key; $('#rvText').textContent = U()[key] }
+  function hint(mode) { $('#rvHand').className = mode || '' }
+  function knock() {
+    if (!RV || RV.opened) return
+    RV.knocks++; RV.lastAct = pnow(); Sfx('knock')
+    const d = $('#door'), fx = $('#knockFx'); d.classList.remove('knock'); void d.offsetWidth; d.classList.add('knock')
+    fx.textContent = U().knock; fx.classList.remove('in'); void fx.offsetWidth; fx.classList.add('in')
+  }
+  function peekLine() {
+    RV.peeked = true; const el = $('#peekSay'); el.textContent = tx(D.PEEK[S.who]); el.classList.add('in'); Sfx('voice')
+    window.__peekSaid = (window.__peekSaid || 0) + 1
+  }
+  async function peep() {
+    if (!RV || !RV.ready || RV.opened || RV.peeping) return
+    RV.peeping = true; RV.peeps++; RV.lastAct = pnow(); Sfx('peep')
+    const pp = $('#peep'); pp.style.setProperty('--z', String(1.05 + Math.min(RV.peeps, 3) * 0.18)); pp.classList.add('in'); $('#stage').classList.add('peeping')
+    window.__peeps = RV.peeps
+    await pwait(1500); pp.classList.remove('in'); $('#stage').classList.remove('peeping'); await pwait(250); if (RV) RV.peeping = false
+  }
   async function reveal() {
-    const u = U(), who = Sim.judge(D, S), p = PMAP[who]
+    const who = Sim.judge(D, S), p = PMAP[who], run = ++rvRun
     S.who = who; S.ttl = Sim.title(D, S)
     window.TM && TM.end(p.tier, p.tier >= 3)
     const isNew = !book.has(who); book.add(who); store.set('jm_book', [...book].join(','))
     show('vReveal'); bed(false); for (const f of $$('.float')) f.remove(); $('#hand').hidden = true
-    const door = $('#door'), tag = $('#nameTag'), sayEl = $('#say')
-    door.className = ''; tag.className = ''; sayEl.className = ''; $('#epi').textContent = ''; $('#bNext').hidden = true
-    $('#portrait').src = `img/p_${who}.webp?${V}`
-    $('#rvText').textContent = u.night; await wait(1500)
-    $('#rvText').textContent = u.bell; Sfx('tap'); await wait(700)
-    $('#rvText').textContent = u.door; Sfx('drum'); door.classList.add('shake'); await wait(3600)
-    door.classList.remove('shake'); door.classList.add('open'); Sfx('swish')
+    RV = { p: 0, ready: false, opened: false, anim: false, drag: false, peeked: false, creaked: false, knocks: 0, peeps: 0, peeping: false, lastAct: pnow(), isNew, txt: '' }
+    window.__doorOpened = false; window.__peekSaid = 0; window.__peeps = 0
+    const door = $('#door'), stg = $('#stage')
+    door.className = ''; stg.className = ''; setDoor(0); RV.creaked = false
+    for (const id of ['#nameTag', '#say', '#peekSay', '#peep', '#knockFx']) $(id).className = ''
+    $('#epi').textContent = ''; $('#bNext').hidden = true; hint('')
+    const src = `img/p_${who}.webp?${V}`
+    $('#portrait').className = 'veil'; $('#portrait').src = src; $('#peepImg').src = src
+    door.setAttribute('aria-label', U().open)
+    rvSay('night'); await pwait(1500); if (run !== rvRun) return
+    rvSay('bell'); Sfx('bell'); await pwait(1100); if (run !== rvRun) return
+    rvSay('door'); drum(true); door.classList.add('shake'); await pwait(1500); if (run !== rvRun) return
+    door.classList.remove('shake'); knock(); await pwait(700); if (run !== rvRun || RV.opened) return
+    RV.ready = true; RV.lastAct = pnow(); rvSay('open'); hint('pull')
+    // 開けずに待っていると、もう一度ノックされる（2回まで）
+    const idle = () => { if (run !== rvRun || !RV || RV.opened) return; if (!RV.drag && !RV.anim && !RV.peeping && RV.knocks < 3 && pnow() - RV.lastAct > 5000 * FAST) knock(); requestAnimationFrame(idle) }
+    requestAnimationFrame(idle)
+  }
+  function drum(on) { if (on) { window.__sfxCalls.drum = (window.__sfxCalls.drum || 0) + 1; Snd.loop('drum', 'snd/drumroll.mp3', 0.45, 0.2) } else if (Snd.loops && Snd.loops.drum) Snd.loop('drum', null, 0, 0.25) }
+  async function openAll() {
+    if (!RV || RV.opened) return
+    const run = rvRun, u = U(), p = PMAP[S.who]; RV.opened = true; hint(''); $('#door').classList.remove('shake'); $('#stage').classList.remove('grab')
+    $('#peekSay').classList.remove('in'); $('#peep').classList.remove('in')
+    Sfx('dopen'); drum(false)
+    await animDoor(1, 520 * (1 - RV.p) + 180); if (run !== rvRun) return
+    $('#door').classList.add('open'); $('#stage').classList.add('opened'); $('#portrait').className = ''
+    window.__doorOpened = true
     const fl = $('#flash'); fl.style.transition = 'none'; fl.style.opacity = 0.9; requestAnimationFrame(() => { fl.style.transition = 'opacity .6s'; fl.style.opacity = 0 })
-    $('#rvText').textContent = u.who
-    await wait(900)
+    rvSay('who')
+    await pwait(900); if (run !== rvRun) return
     Sfx(p.tier >= 4 ? 'win' : p.tier >= 2 ? 'mid' : 'lose'); Sfx('stamp')
-    tag.innerHTML = `${tx(p.name)}<small>${tx(p.tag)}${isNew ? (lang === 'ja' ? '・はじめて' : ' / NEW') : ''}</small>`; tag.classList.add('in')
-    await wait(700); sayEl.textContent = tx(p.say); sayEl.classList.add('in')
-    await wait(900); $('#epi').textContent = tx(p.epi)
+    const tag = $('#nameTag'), sayEl = $('#say')
+    tag.innerHTML = `${tx(p.name)}<small>${tx(p.tag)}${RV.isNew ? (lang === 'ja' ? '・はじめて' : ' / NEW') : ''}</small>`; tag.classList.add('in')
+    await pwait(700); if (run !== rvRun) return
+    sayEl.textContent = tx(p.say); sayEl.classList.add('in')
+    await pwait(900); if (run !== rvRun) return
+    $('#epi').textContent = tx(p.epi)
     $('#bNext').textContent = u.next; $('#bNext').hidden = false
+  }
+  // 指・マウスでドアを扱う。動かさずに離したら「タップ」
+  function doorTap(onEye) {
+    if (!RV || !RV.ready || RV.opened || RV.anim) return
+    RV.lastAct = pnow()
+    if (onEye && RV.p < 0.05) return peep()
+    if (RV.p < AJAR * 0.6) { hint('tap'); animDoor(AJAR, 420) }
+    else openAll()
+  }
+  {
+    // ドアだけでなく、すき間（舞台全体）をつかんでも動かせる
+    const door = $('#door'), stg = $('#stage'); let sx = 0, sy = 0, p0 = 0, moved = false, pid = null, eye = false
+    stg.addEventListener('pointerdown', e => {
+      if (!RV || !RV.ready || RV.opened || RV.anim || pid !== null) return
+      pid = e.pointerId; sx = e.clientX; sy = e.clientY; p0 = RV.p; moved = false; eye = !!(e.target.closest && e.target.closest('.eye'))
+      try { stg.setPointerCapture(pid) } catch (er) {}
+      e.preventDefault()
+    })
+    stg.addEventListener('pointermove', e => {
+      if (e.pointerId !== pid || !RV || RV.opened) return
+      const dx = e.clientX - sx, dy = e.clientY - sy
+      if (!moved && Math.hypot(dx, dy) > 8) { moved = true; RV.drag = true; hint(''); stg.classList.add('grab') }
+      if (!moved) return
+      RV.lastAct = pnow()
+      setDoor(p0 + (-dx) / ($('#stage').clientWidth * 0.85 || 300))
+    })
+    const up = e => {
+      if (e.pointerId !== pid) return
+      pid = null; stg.classList.remove('grab'); if (!RV) return
+      if (!moved) return doorTap(eye)
+      RV.drag = false
+      if (RV.opened) return
+      if (RV.p >= 0.5) openAll()
+      else {
+        const was = RV.p
+        animDoor(0, 260 + was * 500).then(() => { if (!RV || RV.opened) return; if (was > 0.04) Sfx('dclose'); $('#peekSay').classList.remove('in'); RV.peeked = false; hint('pull') })
+      }
+    }
+    stg.addEventListener('pointerup', up); stg.addEventListener('pointercancel', up)
+    door.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doorTap(false) } })
   }
 
   // ---- 結果: 招待状
@@ -333,6 +442,7 @@
     $('#howBody').innerHTML = u.howBody.map(t => `<p>${t}</p>`).join('') + `<small>${u.credits}<br><a href="privacy.html" target="_blank" rel="noopener">${u.privacy}</a></small>`
     if (S && !$('#vPlay').hidden) { render(); tut() }
     if (S && S.who && !$('#vEnd').hidden) result()
+    if (RV && !$('#vReveal').hidden) { if (RV.txt) $('#rvText').textContent = u[RV.txt]; if (RV.peeked) $('#peekSay').textContent = tx(D.PEEK[S.who]); $('#door').setAttribute('aria-label', u.open) }
     if (!$('#chat').hidden) { chatSkip = true; openChat($('#chat').dataset.id) }
   }
 
@@ -372,6 +482,8 @@
     itemXY: a => { const el = a === 'c0' ? $('#bC0') : a === 'c1' ? $('#bC1') : $(`.obj[data-a="${a}"]`); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.6, w: r.width, h: r.height } },
     setLang: l => { lang = l; applyLang() }, book: () => [...book], setBook: ids => { book.clear(); ids.forEach(i => book.add(i)) },
     cellXY: id => { const r = $(`.cell[data-id="${id}"]`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height } },
+    door: () => RV && { p: RV.p, ready: RV.ready, opened: RV.opened, anim: RV.anim, peeping: RV.peeping, peeked: RV.peeked, knocks: RV.knocks, peeps: RV.peeps, veil: $('#portrait').classList.contains('veil') },
+    doorXY: () => { const g = s => { const r = $(s).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height } }; return { knob: g('#door .knob'), eye: g('#door .eye'), door: g('#door'), stage: g('#stage') } },
     mirror: () => S && Sim.mirror(D, S), meSrc: () => $('#meImg').getAttribute('src'), aff, myLine, tipLog: () => window.__tipLog || [], tutStep: () => tutStep,
   }
 

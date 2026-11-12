@@ -15,6 +15,8 @@ for (const [name, bt, opts] of [['chromium', chromium, {}], ['webkit', webkit, {
   const errs = []
   p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()) })
   p.on('requestfailed', r => errs.push('fail ' + r.url()))
+  // github.io は横丁へ転送される。ここでは github.io に出した物そのものを見るので、転送の1行だけ外す
+  await p.route(u => u.href.startsWith(URL0) && u.pathname === '/jibun-migaki/', async r => { const res = await r.fetch(); r.fulfill({ response: res, body: (await res.text()).replace(/<script id="ghMove">[^<]*<\/script>/, '') }) })
   await p.goto(URL0 + '?t=' + Date.now(), { waitUntil: 'networkidle' })
   await p.waitForFunction(() => window.__jmReady, null, { timeout: 15000 })
   // ---- 遊びの通し: 本物のタップで30日（bot の計画）→ 招待状まで ----
@@ -30,9 +32,12 @@ for (const [name, bt, opts] of [['chromium', chromium, {}], ['webkit', webkit, {
     else { const a = await p.evaluate(pl => Plans.P[pl](jm.raw()), plan); await tapXY(a) }
     await p.waitForFunction(() => !jm.busy() && (jm.state().done || !document.querySelector('#vPlay').hidden))
   }
+  // 30日後のドアは自分で開ける: ノブを1回押すと少し開き、2回目で開く
+  await p.waitForFunction(() => jm.door() && jm.door().ready && !jm.door().anim, null, { timeout: 20000 })
+  for (let i = 0; i < 2; i++) { const xy = await p.evaluate(() => jm.doorXY().knob); if (touch) await p.touchscreen.tap(xy.x, xy.y); else await p.mouse.click(xy.x, xy.y); await p.waitForFunction(() => !jm.door().anim) }
   await p.waitForSelector('#bNext:not([hidden])', { timeout: 20000 })
   const who = await p.evaluate(() => jm.state().who), mute = await p.evaluate(() => window.__muteOk ? window.__muteOk() : null)
-  out.push(`${name}: plan=${plan} who=${who} mute=${mute}`)
+  out.push(`${name}: plan=${plan} who=${who} mute=${mute} game.js=${await p.evaluate(() => document.querySelector('script[src^="game.js"]').getAttribute('src'))}`)
   await p.screenshot({ path: `shots/live-${name}.png` })
   const og = await p.evaluate(async () => { const r = await fetch(document.querySelector('meta[property="og:image"]').content); return r.status + ' ' + r.headers.get('content-type') })
   out.push(`${name}: og=${og} errors=${errs.length ? errs.join(' | ') : 'none'}`)

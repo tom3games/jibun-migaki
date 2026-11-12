@@ -31,6 +31,11 @@
 - snd/tap.mp3: Interface Sounds / Kenney / CC0
 - snd/stamp.mp3: 75 CC0 breaking / falling / hit sfx / rubberduck / CC0
 - snd/drumroll.mp3: File:Drum Roll Intro.ogg / Iwan Sounds and DIY / CC0
+- snd/knock1.mp3〜knock3.mp3（3回分を切り出し）: File:Knocking on wood or door.ogg / stephan / Public domain（https://commons.wikimedia.org/wiki/File:Knocking_on_wood_or_door.ogg）
+- snd/bell.mp3（1.6秒に切り出し）: File:Doorbell-cheap-dingdong.ogg / Public domain（https://commons.wikimedia.org/wiki/File:Doorbell-cheap-dingdong.ogg）
+- snd/creak.mp3: 50 RPG sound effects（creak1）/ Kenney / CC0
+- snd/dooropen.mp3: 50 RPG sound effects（doorOpen_1）/ Kenney / CC0
+- snd/doorclose.mp3: 50 RPG sound effects（doorClose_1）/ Kenney / CC0
 
 ## 絵
 - img/ の人物・部屋・小物は、このゲームのために作った架空のものです（元の指示文は art/prompts/）。実在の人物・ブランドとは関係ありません。

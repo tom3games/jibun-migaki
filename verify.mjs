@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 const ROOT = import.meta.dirname
 mkdirSync(ROOT + '/shots', { recursive: true })
-const PORT = 5473
+const PORT = +(process.env.VPORT || 5473)
 const server = spawn(process.execPath, ['server.mjs'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT) } })
 await new Promise(r => setTimeout(r, 400))
 const URL0 = `http://localhost:${PORT}/`
@@ -49,7 +49,28 @@ const fit = q => q.evaluate(() => {
 })
 const tapXY = async (p, a, touch) => { const xy = await p.evaluate(a => jm.itemXY(a), a); if (touch) await p.touchscreen.tap(xy.x, xy.y); else await p.mouse.click(xy.x, xy.y); return xy }
 // bot の計画どおりに、本物のタップで30日を進める
-async function playPlan(p, plan, { seed, touch, shots, cont } = {}) {
+// 30日後のドアは自分で開ける（2026-11-12）。tap = ノブを2回押す / drag = ノブから左へなぞる / none = 開けない
+async function drag(p, x, y, dx, { touch, release = true, steps = 12 } = {}) {
+  if (touch) {
+    const c = await p.context().newCDPSession(p)
+    await c.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
+    for (let i = 1; i <= steps; i++) await c.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * i / steps, y }] })
+    if (release) await c.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    return c
+  }
+  await p.mouse.move(x, y); await p.mouse.down()
+  for (let i = 1; i <= steps; i++) await p.mouse.move(x + dx * i / steps, y)
+  if (release) await p.mouse.up()
+}
+const doorReady = p => p.waitForFunction(() => jm.door() && jm.door().ready && !jm.door().anim, null, { timeout: 20000 })
+async function openDoor(p, how = 'tap', touch) {
+  await doorReady(p)
+  const xy = await p.evaluate(() => jm.doorXY())
+  if (how === 'tap') for (let i = 0; i < 2; i++) { if (touch) await p.touchscreen.tap(xy.knob.x, xy.knob.y); else await p.mouse.click(xy.knob.x, xy.knob.y); await p.waitForFunction(() => !jm.door().anim) }
+  else if (how === 'drag') await drag(p, xy.knob.x, xy.knob.y, -xy.stage.w * 0.75, { touch })
+  if (how !== 'none') await p.waitForSelector('#bNext:not([hidden])', { timeout: 20000 })
+}
+async function playPlan(p, plan, { seed, touch, shots, cont, open = 'tap' } = {}) {
   if (seed == null) seed = await p.evaluate(pl => { for (let s = 1000; s < 3000; s++) { const S = Sim.create(D, s); if (pl === 'cat' ? S.threads.cat && !S.threads.granny : pl === 'granny' ? S.threads.granny && !S.threads.cat : !S.threads.cat && !S.threads.granny) return s } }, plan)
   await p.evaluate(s => { jm.setSeed(s); jm.fast(0.02) }, seed)
   const b = await p.$('#bStart:visible') ? '#bStart' : '#bAgain'
@@ -64,7 +85,7 @@ async function playPlan(p, plan, { seed, touch, shots, cont } = {}) {
     await p.waitForFunction(() => !jm.busy() && (jm.state().done || !document.querySelector('#vPlay').hidden))
     if (shots && i === shots.at) await p.screenshot({ path: shots.path })
   }
-  await p.waitForSelector('#bNext:not([hidden])', { timeout: 20000 })
+  await openDoor(p, open, touch && open === 'tap')
   return { seed, taps, who: await p.evaluate(() => jm.state().who) }
 }
 
@@ -95,7 +116,7 @@ const plans = await p.evaluate(() => D.P.map(x => x.id))
 const reach = {}
 for (const plan of plans) {
   await t(`恋人「${plan}」に bot の遊び方で届く（実タップ）`, async () => {
-    const r = await playPlan(p, plan, { shots: plan === 'takane' ? { at: 10, path: ROOT + '/shots/v-play10.png' } : null })
+    const r = await playPlan(p, plan, { open: plans.indexOf(plan) % 2 ? 'drag' : 'tap', shots: plan === 'takane' ? { at: 10, path: ROOT + '/shots/v-play10.png' } : null })
     reach[plan] = r.who
     expect(r.who === plan, JSON.stringify(r))
     await p.screenshot({ path: `${ROOT}/shots/v-reveal-${plan}.png` })
@@ -191,7 +212,7 @@ await t('画像を保存: png が落ちてくる', async () => {
 await t('支援リンク（プロテイン）が結果画面にある', async () => { const s = await p.textContent('#tmSupport'); expect(/プロテイン/.test(s), s) })
 await t('音: 行動ごとに録音を鳴らす呼び出しがある・実際は無音', async () => {
   const r = await p.evaluate(() => ({ c: window.__sfxCalls, ok: window.__muteOk() }))
-  expect(r.ok && r.c.gym > 0 && r.c.drum > 0 && r.c.tear > 0 && r.c.win > 0 && r.c.lose > 0, JSON.stringify(r)); return r.c
+  expect(r.ok && r.c.gym > 0 && r.c.drum > 0 && r.c.tear > 0 && r.c.win > 0 && r.c.lose > 0 && r.c.knock > 0 && r.c.bell > 0 && r.c.dopen > 0 && r.c.creak > 0, JSON.stringify(r)); return r.c
 })
 await p.close()
 
@@ -337,6 +358,105 @@ await t('鏡の絵16枚が全部読める・部屋の鏡に出る', async () => 
   await z.close(); expect(!bad.length, bad.join(','))
 })
 
+// ---- 30日後のドア（2026-11-12 本人「扉を自分の手で開くみたいな感じに」）。勝手に開かない・ドラッグ・途中で離す・タップ・のぞき穴・判定は変わらない
+const hidden = p => p.evaluate(() => {
+  const pt = document.querySelector('#portrait'), f = getComputedStyle(pt).filter
+  return { veil: pt.classList.contains('veil') && /blur/.test(f) && /brightness\(0\.[0-3]/.test(f), tag: document.querySelector('#nameTag').classList.contains('in'), say: document.querySelector('#say').classList.contains('in'), epi: document.querySelector('#epi').textContent, next: !document.querySelector('#bNext').hidden, opened: window.__doorOpened }
+})
+const unseen = h => h.veil && !h.tag && !h.say && !h.epi && !h.next && !h.opened
+{
+  const d = await open(browser)
+  // 人の速さ（FAST=1）で先まで進めて、見た目を撮る
+  await t('ドア: 待っても勝手に開かない・ノックが繰り返される・恋人はぼかしたまま', async () => {
+    await playPlan(d, 'takane', { open: 'none' })
+    const a = await hidden(d)
+    await d.waitForFunction(() => jm.door().knocks >= 3, null, { timeout: 10000 })
+    await d.waitForTimeout(300)
+    const b = await hidden(d), st = await d.evaluate(() => ({ door: jm.door(), txt: document.querySelector('#rvText').textContent, hand: document.querySelector('#rvHand').className }))
+    expect(unseen(a) && unseen(b) && st.door.p === 0 && !st.door.opened && st.txt === 'ドアを開ける' && st.hand === 'pull', JSON.stringify({ a, b, st }))
+    return { knocks: st.door.knocks }
+  })
+  await t('ドア: のぞき穴を押すとぼやけた影だけ（開かない・恋人は見えない）', async () => {
+    await d.evaluate(() => jm.fast(1))
+    const xy = await d.evaluate(() => jm.doorXY()); await d.mouse.click(xy.eye.x, xy.eye.y); await d.waitForTimeout(450)
+    const r = await d.evaluate(() => { const pi = document.querySelector('#peepImg'); return { peep: document.querySelector('#peep').classList.contains('in'), n: window.__peeps, blur: /blur/.test(getComputedStyle(pi).filter), p: jm.door().p } })
+    await d.screenshot({ path: ROOT + '/shots/v-door-peep.png' })
+    const h = await hidden(d)
+    await d.waitForFunction(() => !document.querySelector('#peep').classList.contains('in'), null, { timeout: 5000 })
+    expect(r.peep && r.n === 1 && r.blur && r.p === 0 && unseen(h), JSON.stringify({ r, h })); return r
+  })
+  await t('ドア: 途中まで引いて離すと閉じ戻る（すき間で一言が聞こえる・恋人は見えない）', async () => {
+    await d.waitForFunction(() => !jm.door().peeping && !jm.door().anim)
+    const xy = await d.evaluate(() => jm.doorXY())
+    await drag(d, xy.knob.x, xy.knob.y, -xy.stage.w * 0.3, { release: false })
+    await d.waitForTimeout(250)
+    const mid = await d.evaluate(() => ({ p: jm.door().p, said: window.__peekSaid, txt: document.querySelector('#peekSay').textContent, vis: document.querySelector('#peekSay').classList.contains('in') }))
+    const h = await hidden(d)
+    await d.screenshot({ path: ROOT + '/shots/v-door-half.png' })
+    await d.mouse.up(); await d.waitForTimeout(1200)
+    const back = await d.evaluate(() => ({ p: jm.door().p, opened: jm.door().opened, said: document.querySelector('#peekSay').classList.contains('in') }))
+    expect(mid.p > 0.25 && mid.p < 0.5 && mid.said === 1 && mid.vis && mid.txt === '緊張してるのは、私のほう' && unseen(h) && back.p === 0 && !back.opened && !back.said, JSON.stringify({ mid, h, back }))
+    return { mid: +mid.p.toFixed(2) }
+  })
+  await t('ドア: 1回押すと少し開いて止まり、2回目で開く（タップだけでも開けられる）', async () => {
+    const xy = await d.evaluate(() => jm.doorXY())
+    await d.mouse.click(xy.knob.x, xy.knob.y); await d.waitForTimeout(900)
+    const a = await d.evaluate(() => ({ p: jm.door().p, opened: jm.door().opened, hand: document.querySelector('#rvHand').className }))
+    const h = await hidden(d)
+    await d.screenshot({ path: ROOT + '/shots/v-door-ajar.png' })
+    await d.mouse.click(xy.knob.x, xy.knob.y); await d.waitForTimeout(300)
+    await d.screenshot({ path: ROOT + '/shots/v-door-opening.png' })
+    await d.waitForSelector('#bNext:not([hidden])', { timeout: 8000 }); await d.waitForTimeout(400)
+    const b = await hidden(d), who = await d.evaluate(() => ({ who: jm.state().who, src: document.querySelector('#portrait').getAttribute('src') }))
+    await d.screenshot({ path: ROOT + '/shots/v-door-open.png' })
+    expect(a.p > 0.2 && a.p < 0.45 && !a.opened && a.hand === 'tap' && unseen(h) && !b.veil && b.tag && b.say && b.next && b.opened && who.who === 'takane' && /p_takane/.test(who.src), JSON.stringify({ a, h, b, who }))
+  })
+  await d.close()
+}
+await t('ドア: ドラッグで開く（なぞった分だけ開き、半分を越えて離すと一気に開く）', async () => {
+  const z = await open(browser)
+  await playPlan(z, 'futsuu', { open: 'none' })
+  const xy = await z.evaluate(() => jm.doorXY()), ps = []
+  await z.mouse.move(xy.knob.x, xy.knob.y); await z.mouse.down()
+  for (let i = 1; i <= 10; i++) { await z.mouse.move(xy.knob.x - xy.stage.w * 0.065 * i, xy.knob.y); ps.push(+(await z.evaluate(() => jm.door().p)).toFixed(2)) }
+  const h = await hidden(z)
+  await z.mouse.up(); await z.waitForSelector('#bNext:not([hidden])', { timeout: 8000 })
+  const r = await z.evaluate(() => ({ who: jm.state().who, d: jm.door() }))
+  await z.close()
+  const mono = ps.every((v, i) => !i || v >= ps[i - 1])
+  expect(mono && ps[2] > 0 && ps[2] < 0.5 && ps.at(-1) > 0.5 && unseen(h) && r.d.opened && r.d.p === 1 && r.who === 'futsuu', JSON.stringify({ ps, h, r })); return ps.join(',')
+})
+await t('ドア: 指（タッチ）のドラッグでも開く・途中で離すと戻る', async () => {
+  const z = await open(browser, { hasTouch: true, isMobile: true })
+  await playPlan(z, 'imo', { open: 'none', touch: true })
+  let xy = await z.evaluate(() => jm.doorXY())
+  await drag(z, xy.knob.x, xy.knob.y, -xy.stage.w * 0.25, { touch: true }); await z.waitForTimeout(800)
+  const a = await z.evaluate(() => jm.door())
+  xy = await z.evaluate(() => jm.doorXY())
+  await drag(z, xy.knob.x, xy.knob.y, -xy.stage.w * 0.8, { touch: true }); await z.waitForSelector('#bNext:not([hidden])', { timeout: 8000 })
+  const b = await z.evaluate(() => ({ who: jm.state().who, d: jm.door(), errs: 0 }))
+  const errs = z.errs.slice(); await z.close()
+  expect(a.p === 0 && !a.opened && b.d.opened && b.who === 'imo' && !errs.length, JSON.stringify({ a, b, errs }))
+})
+await t('ドア: Enter キーでも開く（PC）', async () => {
+  const z = await open(browser)
+  await playPlan(z, 'pillow', { open: 'none' })
+  await z.focus('#door'); await z.keyboard.press('Enter'); await z.waitForFunction(() => !jm.door().anim); await z.keyboard.press('Enter')
+  await z.waitForSelector('#bNext:not([hidden])', { timeout: 8000 })
+  const who = await z.evaluate(() => jm.state().who); await z.close(); expect(who === 'pillow', who)
+})
+await t('ドア: 判定は開け方で変わらない（同じ種・同じ遊び方なら、タップでもドラッグでも同じ恋人）', async () => {
+  const z = await open(browser), out = []
+  for (const [plan, seed] of [['futsuu', 4242], ['gal', 777], ['robot', 1001]]) {
+    const exp = await z.evaluate(([pl, sd]) => { const S = Sim.create(D, sd); while (!S.done) { if (S.choice) { Sim.choose(D, S, Plans.choice(pl, S.choice)); continue } if (!Sim.act(D, S, Plans.P[pl](S)).ok) Sim.act(D, S, 'sleep') } return Sim.judge(D, S) }, [plan, seed])
+    const a = await playPlan(z, plan, { seed, open: 'tap' }); await z.click('#bNext'); await z.waitForFunction(() => window.__jmCardDone)
+    const b = await playPlan(z, plan, { seed, open: 'drag' }); await z.click('#bNext'); await z.waitForFunction(() => window.__jmCardDone)
+    out.push([plan, exp, a.who, b.who])
+  }
+  await z.close()
+  expect(out.every(([, e, a, b]) => e && e === a && a === b), JSON.stringify(out)); return out.map(o => o[2]).join(',')
+})
+
 // ---- 英語
 const e = await open(browser)
 await t('英語に切り替えると日本語が消える（タイトル・部屋）', async () => {
@@ -348,6 +468,11 @@ await t('英語に切り替えると日本語が消える（タイトル・部�
 await t('英語で最後まで遊べて招待状も英語', async () => {
   await e.evaluate(() => jm.fast(0.02))
   for (let i = 0; i < 40; i++) { const st = await e.evaluate(() => jm.state()); if (st.done) break; if (st.choice) await tapXY(e, 'c1'); else await tapXY(e, st.hp < 30 ? 'sleep' : ['gym', 'study', 'job'][i % 3]); await e.waitForFunction(() => !jm.busy()) }
+  await doorReady(e); const xy = await e.evaluate(() => jm.doorXY()); await e.mouse.click(xy.knob.x, xy.knob.y); await e.waitForFunction(() => !jm.door().anim)
+  const ajar = await e.evaluate(() => ({ t: document.querySelector('#rvText').textContent, s: document.querySelector('#peekSay').textContent, k: document.querySelector('#knockFx').textContent, al: document.querySelector('#door').getAttribute('aria-label') }))
+  expect(ajar.t === 'Open the door' && ajar.k === 'Knock knock' && ajar.al === 'Open the door' && ajar.s && !/[ぁ-んァ-ヶ一-龠]/.test(ajar.s), JSON.stringify(ajar))
+  await e.screenshot({ path: ROOT + '/shots/v-en-ajar.png' })
+  await e.mouse.click(xy.knob.x, xy.knob.y)
   await e.waitForSelector('#bNext:not([hidden])'); const rv = await e.evaluate(() => document.querySelector('#vReveal').innerText)
   expect(!/[ぁ-んァ-ヶ一-龠]/.test(rv), rv)
   await e.click('#bNext'); await e.waitForFunction(() => window.__jmCardDone); await e.screenshot({ path: ROOT + '/shots/v-en-end.png' })
@@ -375,7 +500,13 @@ for (const [w, h, name] of [[360, 640, 'small'], [390, 844, 'phone'], [430, 932,
   // できごとの2択
   await s.evaluate(() => { const S = jm.raw(); S.events[S.day] = 'cat' }); await tapXY(s, 'sleep', true); await s.waitForSelector('#memo:not([hidden])')
   views.memo = await fit(s); await s.screenshot({ path: `${ROOT}/shots/fit-${name}-memo.png` }); await tapXY(s, 'c0', true); await s.waitForFunction(() => !jm.busy())
-  const r = await playPlan(s, 'imo', { touch: true, seed: 5, cont: true })
+  const r = await playPlan(s, 'imo', { touch: true, seed: 5, cont: true, open: 'none' })
+  await s.evaluate(() => jm.fast(1)); await s.waitForTimeout(500)
+  views.door = await fit(s); await s.screenshot({ path: `${ROOT}/shots/fit-${name}-door.png` })
+  { const xy = await s.evaluate(() => jm.doorXY()); await s.touchscreen.tap(xy.knob.x, xy.knob.y); await s.waitForTimeout(1200)
+    views.ajar = await fit(s); await s.screenshot({ path: `${ROOT}/shots/fit-${name}-ajar.png` })
+    const o = await overflow(s); if (o.sw > o.W || o.bad.length) views.ajar.over.push('xover:' + JSON.stringify(o))
+    await s.touchscreen.tap(xy.knob.x, xy.knob.y); await s.waitForSelector('#bNext:not([hidden])', { timeout: 10000 }); await s.evaluate(() => jm.fast(0.02)) }
   await s.waitForTimeout(400); views.reveal = await fit(s); await s.screenshot({ path: `${ROOT}/shots/fit-${name}-reveal.png` })
   await s.tap('#bNext'); await s.waitForFunction(() => window.__jmCardDone); await s.waitForTimeout(300)
   views.end = await fit(s); await s.screenshot({ path: `${ROOT}/shots/fit-${name}-end.png` })
@@ -408,6 +539,14 @@ await t('WebKit: タップだけで30日→恋人（ずっと寝る→抱き枕�
   return r
 })
 await t('WebKit: タップだけで「高嶺の花」', async () => { const r = await playPlan(wp, 'takane', { touch: true }); expect(r.who === 'takane', JSON.stringify(r)) })
+await t('WebKit: ドアをドラッグで開ける（途中の見た目も撮る）', async () => {
+  await wp.tap('#bNext'); await wp.waitForFunction(() => window.__jmCardDone)
+  await playPlan(wp, 'protein', { open: 'none' }); await wp.evaluate(() => jm.fast(1))
+  const xy = await wp.evaluate(() => jm.doorXY()); await drag(wp, xy.knob.x, xy.knob.y, -xy.stage.w * 0.35, { release: false }); await wp.waitForTimeout(300)
+  const mid = await wp.evaluate(() => jm.door().p); await wp.screenshot({ path: ROOT + '/shots/v-webkit-door-half.png' })
+  await wp.mouse.move(xy.knob.x - xy.stage.w * 0.8, xy.knob.y, { steps: 6 }); await wp.mouse.up(); await wp.waitForSelector('#bNext:not([hidden])', { timeout: 10000 }); await wp.evaluate(() => jm.fast(0.02))
+  const who = await wp.evaluate(() => jm.state().who); expect(mid > 0.3 && mid < 0.5 && who === 'protein', JSON.stringify({ mid, who }))
+})
 await t('WebKit: 実際には無音（始めた後・音を鳴らした後）', async () => {
   const r = await wp.evaluate(() => ({ ok: window.__muteOk(), calls: Object.keys(window.__sfxCalls).length }))
   expect(r.ok && r.calls > 3, JSON.stringify(r)); return r
